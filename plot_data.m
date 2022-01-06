@@ -50,7 +50,7 @@ xMax = 0;
 xMin = inf;
 yMax = 0;
 yMin = inf;
-colorList = redbluecmap(length(files));
+colorList = jet(length(files));
 
 for i = 1:length(files)
     f = files{i};
