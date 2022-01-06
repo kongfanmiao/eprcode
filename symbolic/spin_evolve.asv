@@ -1,0 +1,25 @@
+function result = spin_evolve(sigma, Hamiltonian)
+% express B in Cartesian basis
+% sigma: initial density matrix
+% Hamiltonian: Hamiltonian that operats on the density matrix
+
+load('operators.mat');
+
+result = sigma;
+prev = 1;
+for i = 1:16
+    b = basis{i};
+    constant = sqrt(trace(b*b'));
+    coef = get_coef(Hamiltonian,b/constant);
+    if coef ~= 0
+        % check if the operators commute with each other
+        if ~all(commutator(b,prev)==0)
+            error("The terms in Hamiltonian should commute with each other");
+        end
+%         result = result*cos(coef) + ...
+%             1i*commutator(result,b/constant)*sin(coef);
+        prev = b;
+    end
+end
+
+end
