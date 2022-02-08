@@ -8,6 +8,7 @@ arguments
 end
 
 % Get the list of file names
+keywords(end+1) = "T1PF";
 files = find_files(path, keywords(:));
 % Extract the temperature string according to given pattern
 tempStr = cellfun(@(s)regexp(s,"\d*\.*\d*K", "match"), files);
@@ -27,7 +28,7 @@ labels = cell(size(files));
 
 % Set the x and y axis label
 xlabelStr = "Recovery time (\mus)";
-ylabelStr = "Echo signal";
+ylabelStr = "Signal";
 
 xMax = 0;
 xMin = inf;
@@ -62,6 +63,10 @@ ylim([yMin yMax]);
 yticks([]);
 hold off
 
+fig = gcf;
+if ~(fig.WindowStyle == "docked")
+    set(fig,'position',[10,10,900,600]);
+end
 end
 
 

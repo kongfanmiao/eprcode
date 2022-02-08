@@ -1,4 +1,4 @@
-function FitResult = fit_T1(path, keywords, fitfunc, MarkerSize)
+function FitResult = fit_Tm(path, keywords, fitfunc, MarkerSize)
 % Plot data files in given path based on given keywords. The keywords can 
 % be as many as you want, and can be in any sequence.
 
@@ -9,13 +9,12 @@ arguments
     MarkerSize double = 20
 end
 
-% Get the list of file names
 fitfuncFullName = containers.Map( ...
     ["Exp1", "Exp2", "StrExp"], ...
     ["Mono-exponential", "Bi-exponential", "Stretched Exponential"]);
 
 % Get the list of file names
-keywords(end+1) = "T1PF";
+keywords(end+1) = "Tm";
 keywords = unique(keywords);
 files = find_files(path, keywords(:));
 % Extract the temperature string according to given pattern
@@ -35,7 +34,7 @@ titleStr = join(keywordsList, " ");
 labels = cell(2*length(files),1);
 
 % Set the x and y axis label
-xlabelStr = "Recovery time (\mus)";
+xlabelStr = strcat("2",char([0xD835 0xDF0F]), " (ns)");
 ylabelStr = "Signal";
 
 xMax = 0;
@@ -63,10 +62,6 @@ for i = 1:length(files)
     [x, y] = eprload(fullfile(path, f));
     y = real(y);
     y = y/max(y); % normalize
-    % change x axis
-    DSCfile = strcat(f(1:end-3),"DSC");
-    x = change_x_axis(numel(x), fullfile(path,DSCfile));
-    x = x/1000;
     % fit
     % first use exponfit to get an estimate
     [k,c,yfit] = exponfit(x,y,1);
@@ -94,7 +89,7 @@ for i = 1:length(files)
             yfit = curve(x);
         case "StrExp"
             bounds = [c/100 0.1 k/100;...
-                      c*100 10 k*100];
+                      c*100 1.2 k*100];
             fo = fitoptions(func, ...
                 "StartPoint",[c 1 k], ...
                 "Lower",min(bounds,[],1), ...
@@ -117,7 +112,6 @@ for i = 1:length(files)
     yMin = min(yMin, min(real(y)));
     yMax = max(yMax, max(real(y)));
 end
-set(gca,'xscale','log');
 title(strcat(titleStr, sprintf("\n(%s)",fitfuncFullName(fitfunc))), ...
     "Interpreter","none");
 legend(labels, "Location","northeastoutside", "Interpreter","none");
