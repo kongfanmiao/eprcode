@@ -55,11 +55,12 @@ colorList = jet(length(files));
 for i = 1:length(files)
     f = files{i};
     [x, y] = eprload(fullfile(path, f));
+    y = real(y);
     y = y/max(y); % normalize
     if any(keywordsList == 'T1PF')
         DSCfile = strcat(f(1:end-3),"DSC");
         x = change_x_axis(numel(x), fullfile(path,DSCfile));
-        x = x/1e3; % change to um unit
+        x = x/1e3; % change to us unit
         semilogx(x,y, "Color",colorList(i,:));
     else
         y = y+i*offset;
