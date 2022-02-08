@@ -1,17 +1,14 @@
 % operators
 clear;
 
-sigma_x = [0 1; 1 0];
-sigma_y = [0 -1i; 1i 0];
-sigma_z = [1 0; 0 -1];
+sx = sop(1/2,'x');
+sy = sop(1/2,'y');
+sz = sop(1/2,'z');
 one = eye(2);
 
-sx = 1/2*sigma_x;
-sy = 1/2*sigma_y;
-sz = 1/2*sigma_z;
-ix = 1/2*sigma_x;
-iy = 1/2*sigma_y;
-iz = 1/2*sigma_z;
+ix = sx;
+iy = sy;
+iz = sz;
 
 I = kron(one,one);
 Sx = kron(sx,one); 

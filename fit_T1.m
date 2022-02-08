@@ -9,6 +9,7 @@ arguments
     MarkerSize double = 20
 end
 
+% Get the list of file names
 fitfuncFullName = containers.Map( ...
     ["Exp1", "Exp2", "StrExp"], ...
     ["Mono-exponential", "Bi-exponential", "Stretched Exponential"]);

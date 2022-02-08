@@ -67,7 +67,6 @@ fig = gcf;
 if ~(fig.WindowStyle == "docked")
     set(fig,'position',[10,10,900,600]);
 end
-
 end
 
 
