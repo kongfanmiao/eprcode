@@ -1,4 +1,4 @@
-function FitResult = fit_Tm(path, keywords, fitfunc, MarkerSize)
+function [FitResult,X,Yfit] = fit_Tm(path, keywords, fitfunc, MarkerSize)
 % Plot data files in given path based on given keywords. The keywords can 
 % be as many as you want, and can be in any sequence.
 
@@ -53,6 +53,8 @@ switch fitfunc
         func = "c1 + c2*exp(-(k*x)^c3)";
         num_k = 1; num_c = 3;
 end
+X = [];
+Yfit = [];
 k = zeros(length(files),num_k);
 c = zeros(length(files),num_c);
 rmse = zeros(size(files)); % Root mean squared error
@@ -101,6 +103,10 @@ for i = 1:length(files)
             FitResult.rmse(i) = gof.rmse; 
             yfit = curve(x);
     end
+%     x = reshape(x,1,[]);
+%     yfit = reshape(yfit,1,[]);
+%     X(end+1,:) = x;
+%     Yfit(end+1,:) = yfit;
     scatter(x,y,MarkerSize, "MarkerEdgeColor",colorList(i,:));
     labels{2*i-1} = strcat(num2str(temperature(i))," K data");
     hold on
