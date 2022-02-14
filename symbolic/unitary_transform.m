@@ -16,7 +16,6 @@ function resM = unitary_transform(M,U)
 % end
 resM = U*M*U';
 if isa(resM, 'sym')
-    disp('Simplifying');
     resM = mapSymType(resM, 'rational', @(x)simplify_numbers(x));
     resM = expand(resM, "ArithmeticOnly", true);
     resM = combine(resM, "sincos");
