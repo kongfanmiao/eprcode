@@ -62,11 +62,11 @@ for i = 1:length(files)
     f = files{i};
     [x, y] = eprload(fullfile(path, f));
     y = real(y);
-    y = y/max(y); % normalize
+%     y = y/max(y); % normalize
     % change x axis
     DSCfile = strcat(f(1:end-3),"DSC");
     x = change_x_axis(numel(x), fullfile(path,DSCfile));
-    x = x/1000;
+%     x = x/1000;
     % fit
     % first use exponfit to get an estimate
     [k,c,yfit] = exponfit(x,y,1);
@@ -106,6 +106,7 @@ for i = 1:length(files)
             FitResult.rmse(i) = gof.rmse; 
             yfit = curve(x);
     end
+%     x = x/1000;
     scatter(x,y,MarkerSize, "MarkerEdgeColor",colorList(i,:));
     labels{2*i-1} = strcat(num2str(temperature(i))," K data");
     hold on
@@ -117,7 +118,7 @@ for i = 1:length(files)
     yMin = min(yMin, min(real(y)));
     yMax = max(yMax, max(real(y)));
 end
-set(gca,'xscale','log');
+% set(gca,'xscale','log');
 title(strcat(titleStr, sprintf("\n(%s)",fitfuncFullName(fitfunc))), ...
     "Interpreter","none");
 legend(labels, "Location","northeastoutside", "Interpreter","none");
