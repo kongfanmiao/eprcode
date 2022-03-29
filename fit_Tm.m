@@ -5,7 +5,7 @@ function [FitResult,X,Yfit] = fit_Tm(path, keywords, fitfunc, MarkerSize)
 arguments
     path string
     keywords string
-    fitfunc string {mustBeMember(fitfunc,{'Exp1','Exp2','StrExp'})}= 'Exp1'
+    fitfunc string {mustBeMember(fitfunc,{'Exp1','Exp2','StrExp'})}= 'Exp2'
     MarkerSize double = 20
 end
 
