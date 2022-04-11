@@ -1,33 +1,43 @@
-function plot_Tm_vs_temp(temp,Tm,Color,Marker,MarkerSize,inverseT1)
+function plot_Tm_vs_temp(FitResult,varargin)
 
-arguments
-    temp double
-    Tm double
-    Color = 'm'
-    Marker {mustBeMember(Marker,{'o','+','*','.','x','-','|','s','d',...
-        '^','v','>','<','p','h'})} = 'p'
-    MarkerSize double = 100
-    inverseT1 logical = false
-end
+par = inputParser;
+par.addOptional('inverseT1', '', @(x)any(validatestring(x, ...
+    {'', 'inverse'})));
+par.addParameter('Color', 'b', @(x)isstring(x)|ischar(x));
+par.addParameter('Marker', 'o', @(x)any(validatestring(x, ...
+    {'o','+','*','.','x','-','|','s','d','^','v','>','<','p','h'})));
+par.addParameter('MarkerSize', 100, @isnumeric);
+par.KeepUnmatched = true;
 
-if inverseT1
+parse(par, varargin{:});
+args = par.Results;
+
+temp = FitResult.Temperature;
+Tm = FitResult.Tm;
+
+if ~isempty(args.inverseT1)
     y = 1./Tm;
-    ylab = "1/T_m (1/ns)";
+    ylab = sprintf("1/T_m (1/%s)", ...
+        FitResult.Properties.VariableUnits{2});
     ttl = "1/T_m versus Temperature";
 else
     y = Tm;
-    ylab = "T_m (ns)";
+    ylab = sprintf("T_m (1/%s)", ...
+        FitResult.Properties.VariableUnits{2});
     ttl = "T_m versus Temperature";
 end
 
-scatter(temp, y, MarkerSize,Marker,Color,'filled')
+set(gcf,'color','w');
+scatter(temp, y, args.MarkerSize, args.Marker, args.Color,'filled')
 xlabel("Temperature (K)");
 ylabel(ylab);
 title(ttl)
+box on
 
 fig = gcf;
-if ~(fig.WindowStyle == "docked")
+if fig.WindowStyle ~= "docked"
     set(fig,'position',[10,10,900,600]);
 end
+
 
 end
