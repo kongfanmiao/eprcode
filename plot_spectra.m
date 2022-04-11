@@ -1,78 +1,103 @@
-function plot_spectra(varargin)
-% Plot data files in given path based on given keywords. The keywords can 
-% be as many as you want, and can be in any sequence.
+% plot_spectra    Plot the field sweep spectra
+%
+%   plot_spectra(path, keywords)
+%   plot_spectra(path, keywords, 'Color','k')
+%   plot_spectra(path, keywords, 'Offset', 0)
+%   plot_spectra(path, keywords, 'NormalizeField', true)
+%   plot_spectra(path, keywords, 'NormalizeSignal', true)
+%   plot_spectra(path, keywords, 'ScaleSignal', 2)
+%   plot_spectra(path, keywords, 'Shift', 0.5)
+%   plot_spectra(path, keywords, 'FieldUnit', 'G')
+%
+%   Input:
+%       path        directory to find files
+%       keywords    keywords based on which to find files
+%                   - string: "EDFS" (if there's only one keyword)
+%                   - character vector: 'EDFS' (if there's only one keyword)
+%                   - string array: ["80K", "EDFS"]
+%                   - cell array of character vectors: {'80K', 'EDFS'}
+%       Color       color of the spectra, use jet colormap by default, you
+%                   can specify a color and it applies to all lines
+%       Offset      apply a vertical offset if there are multiple lines. By
+%                   default it's zero
+%       NormalizeField    
+%                   normalize the frequency and scale the field
+%                   accordingl. X band is normalilzed to 9.5 GHz, Q band to
+%                   34 GHz. It's false by default.
+%       NormailzeSignal
+%                   normalize the signal magnitude to 1 for all the lines.
+%                   It's false by default
+%       ScaleSignal stretch or compress the signal magnitude vertically.
+%                   The default value is 1
+%       Shift       shift the signal vertically. Default is 0.
+%       FieldUnit   unit of field, 'mT' by default
+%
+%   Example:
+%       plot_spectra('./Data',["EDFS","5K"] 'color', 'k')
+%
+
+function plot_spectra(path, keywords, varargin)
 
 % parse the input arguments
 par = inputParser;
 
-par.addRequired('path', @(x)isstring(x)|ischar(x));
-par.addRequired('keywords', @isstring);
 par.addParameter('Color', 'map');
 par.addParameter('Offset', 0, @isnumeric);
 par.addParameter('NormalizeField', false, @islogical);
 par.addParameter('NormalizeSignal', false, @islogical);
 par.addParameter('ScaleSignal', 1, @isnumeric);
 par.addParameter('Shift', 0, @isnumeric);
+par.addParameter('FieldUnit', 'mT', @(x)any(validatestring(x, {'mT', 'G'})));
 
 par.KeepUnmatched = true;
 
 parse(par, varargin{:});
-path = par.Results.path;
-keywords = par.Results.keywords;
-color = par.Results.Color;
-offset = par.Results.Offset;
+args = par.Results;
 
-% offset = 0.4;
+color = args.Color;
+offset = args.Offset;
 
-% Get the list of file names
-files = find_files(path, keywords(:));
-% Extract the temperature string according to given pattern
-tempStr = cellfun(@(s)regexp(s,"\d*\.*\d*K", "match"), files);
-% Convert to double data type
-temperature = cellfun(@(s)str2double(s(1:end-1)),tempStr);
-% Sort the files according to temperature in ascending order
-filesTable = table(files, temperature);
-filesTable = sortrows(filesTable, "temperature");
-temperature = filesTable.temperature;
-files = filesTable.files;
-% Convert cell array to matrix
-keywordsList = horzcat(keywords(:)); % string array
+keywords = string(keywords); 
+filesTable = sort_temperature(path, keywords);
+Temperature = filesTable.Temperature;
+Files = filesTable.Files;
+numFiles = length(Files);
+
 % Create the figure title based on keywords
-titleStr = join(keywordsList, ' ');
+titleStr = join(keywords, ' ');
 % Create figure legends
-labels = cell(size(files));
+labels = cell(size(Files));
 
 % Set the x and y axis label
-xlabelStr = "B (mT)";
+xlabelStr = sprintf("B (%s)", args.FieldUnit);
 ylabelStr = "Signal";
 
 xMax = 0;
 xMin = inf;
 yMax = 0;
 yMin = inf;
-colorList = jet(length(files));
+colorList = jet(numFiles);
 
-tmp = table();
-for i = 1:length(files)
-    f = files{i};
+for i = 1:numFiles
+    f = Files{i};
     [x, y, params] = eprload(fullfile(path, f));
-    x = x/10; % use mT as unit
+    if isequal(args.FieldUnit, 'mT')
+        x = x/10;
+    end
     y = real(y);
-    
-    % shorts per loop
-    spp = params.ShotsPLoop;
-    y = y/spp; % average all the shots
-
+    % average all the shots
+    spp = params.ShotsPLoop; % shorts per loop
+    y = y/spp;
 %     power = strip(params.Power);
 %     power = power(1:end-2);
 %     power = str2double(strip(power));
 %     atten = strip(params.Attenuation);
 %     atten = atten(1:end-2);
 %     atten = str2double(strip(atten));
-%     tmp{end+1,:} = [temperature(i), power, atten, max(y)];
+%     tmp{end+1,:} = [Temperature(i), power, atten, max(y)];
    
     % Normalize the field
-    if par.Results.NormalizeField
+    if args.NormalizeField
         % determine X or Q band
         mwfq = params.MWFQ;
         if (8e9 < mwfq) && (mwfq < 10e9) % X band, normalize to 9.5 GHz
@@ -83,7 +108,7 @@ for i = 1:length(files)
     end          
     
     % Normalize the signal
-    if par.Results.NormalizeSignal
+    if args.NormalizeSignal
         y = y/max(y);
     end
     
@@ -91,19 +116,19 @@ for i = 1:length(files)
     y = y+ max(y) * offset;
     
     % Shift the line vertically
-    y = y + max(y) * par.Results.Shift;
+    y = y + max(y) * args.Shift;
 
     % Scale the line verticalluy
-    y = y*par.Results.ScaleSignal;
+    y = y*args.ScaleSignal;
 
-    if all(color == 'map')
+    if isequal(color,'map')
         c = colorList(i,:);
     else
         c = color;
     end
     
     plot(x, y, "Color",c);
-    labels{i} = strcat(num2str(temperature(i))," K");
+    labels{i} = strcat(num2str(Temperature(i))," K");
     hold on
     xMin = min(xMin, min(x));
     xMax = max(xMax, max(x));
@@ -122,12 +147,13 @@ xlim([xMin xMax]);
 ylim([yMin yMax]);
 yticks([]);
 hold off
+set(gcf,'color','w');
+box on
 
 fig = gcf;
-if ~(fig.WindowStyle == "docked")
+if fig.WindowStyle ~= "docked"
     set(fig,'position',[10,10,900,600]);
 end
 
 end
-
 
