@@ -1,4 +1,4 @@
-function [x,y,params] = load_file(path, keywords)
+function [x,y,varargout] = load_file(path, keywords)
 % load data base on give keywords
 arguments
     path string
@@ -12,4 +12,11 @@ if length(file) ~= 1
 end
 file = file{:};
 [x,y,params] = eprload(fullfile(path,file));
+if nargout == 3
+    varargout{:} = params;
+elseif nargout == 2
+    varargout{:} = [];
+else
+    error("The output should be at least two variables")
+end
 end
