@@ -13,7 +13,16 @@ parse(par, varargin{:});
 args = par.Results;
 
 temp = FitResult.Temperature;
-Tm = FitResult.Tm;
+
+try
+    Tm = FitResult.Tm; % mono or stretch exponential
+catch
+    try
+        Tm = FitResult.T_long; % bi-exponential
+    catch
+        error('There is no Tm or T_long in the FitResult table');
+    end
+end
 
 if ~isempty(args.inverseT1)
     y = 1./Tm;
