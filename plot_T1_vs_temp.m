@@ -15,8 +15,8 @@
 function plot_T1_vs_temp(FitResult,varargin)
 
 par = inputParser;
-par.addOptional('inverseT1', '', @(x)any(validatestring(x, ...
-    {'', 'inverse'})));
+par.addParameter('Inverse', false, @islogical);
+par.addParameter('LogScale', false, @islogical);
 par.addParameter('Color', 'b', @(x)isstring(x)|ischar(x));
 par.addParameter('Marker', 'o', @(x)any(validatestring(x, ...
     {'o','+','*','.','x','-','|','s','d','^','v','>','<','p','h'})));
@@ -27,9 +27,18 @@ parse(par, varargin{:});
 args = par.Results;
 
 temp = FitResult.Temperature;
-T1 = FitResult.T1;
 
-if ~isempty(args.inverseT1)
+try
+    T1 = FitResult.T1; % mono or stretch exponential
+catch
+    try
+        T1 = FitResult.T_long; % bi-exponential
+    catch
+        error('There is no T1 or T_long in the FitResult table');
+    end
+end
+
+if args.Inverse
     y = 1./T1;
     ylab = sprintf("1/T_1 (1/%s)", ...
         FitResult.Properties.VariableUnits{2});
@@ -47,6 +56,9 @@ ylabel(ylab);
 title(ttl)
 set(gcf,'color','w');
 box on
+
+if args.LogScale
+    set(gca, 'XScale', 'log', 'YScale', 'log');
 
 fig = gcf;
 if fig.WindowStyle ~= "docked"
