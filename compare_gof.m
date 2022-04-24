@@ -17,7 +17,7 @@ rsquare = cellfun(@(t)t.("R-Squared"), FitResults, 'UniformOutput',false);
 clf;
 set(gcf,'color','w');
 for i = 1:numel(temp)
-    scatter(temp{i}, rsquare{i})
+    scatter(temp{i}, rsquare{i}, 'filled')
     hold on
 end
 legend(labels);
