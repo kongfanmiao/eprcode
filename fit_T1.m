@@ -96,7 +96,7 @@ switch fitfunc
         FitResult.Properties.VariableUnits = {'K', timeUnit};
     case "Exp2"
         FitResult = table('VariableNames',{'Temperature', ...
-            'T1', 'T1 Percentage', 'Tf', 'Tf Percentage'}, ...
+            'T_long', 'T_long Percentage', 'T_short', 'T_short Percentage'}, ...
             'Size', [numFiles, 5], 'VariableTypes',repelem({'double'},5));
         FitResult.Properties.VariableUnits = {'K', timeUnit, '', ...
             timeUnit, ''};
@@ -126,7 +126,7 @@ for i = 1:numFiles
             fo = fitoptions(func,"StartPoint",[c 1/k]);
             ft = fittype(func,"options",fo);
             [curve, gof] = fit(x,y,ft);
-            FitResult.T1(i) = 1/curve.k;
+            FitResult.T_long(i) = 1/curve.k;
             FitResult.("R-Square")(i) = gof.rsquare;
             yfit = curve(x);
         case "Exp2"
@@ -139,10 +139,10 @@ for i = 1:numFiles
                 "Upper",max(bounds,[],1));
             ft = fittype(func,"options",fo);
             [curve, gof] = fit(x,y,ft);
-            [T1, T1Perc, Tf, TfPerc] = get_TandTf( ...
-                [curve.k1, curve.k2], [curve.c1, curve.c2, curve.c3], ...
-                timeScaleFactor);
-            FitResult{i,2:end-1} = [T1, T1Perc, Tf, TfPerc];
+            [T_long, T_longPerc, T_short, T_shortPerc] = ...
+                get_Tlong_and_Tshort([curve.k1, curve.k2], ...
+                [curve.c1, curve.c2, curve.c3], timeScaleFactor);
+            FitResult{i,2:end-1} = [T_long, T_longPerc, T_short, T_shortPerc];
             FitResult.("R-Squared")(i) = gof.rsquare; 
             yfit = curve(x);
         case "StrExp"
