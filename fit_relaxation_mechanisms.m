@@ -8,11 +8,23 @@
 %       T           temperature array
 %       T1          T1 array
 %       (either provide FitResult or T and T1)
-%       mechanims   relaxation mechanism to use
+%       Mechanims   relaxation mechanism to use
 %                   {'direct', 'raman'}
-%       mwfreq      provide microwave frequency if using thermal process,
+%       MwFreq      provide microwave frequency if using thermal process,
 %                   by default in GHz unit. (optional)
+%       LogScale    plot x and y axis in log scale
+%       PlotIndividualProcess
+%                   plot each summand of relaxation processes
+%       TimeUnit    time unit of the T1 values. This is required if you
+%                   provide T and T1 as array but not table
+%       StartingPoint
+%                   starting point of the fitting
+%       LowerBound  lower bound for the fitting
+%       UpperBound  upper bound for the fitting
 %
+%   Output
+%       curve       fitted curve
+%       gof         goodness of fitting
 %
 
 
@@ -23,11 +35,14 @@ allMechanisms = {'direct', 'raman', 'orbach', 'local', 'thermal', 'power'};
 
 par = inputParser;
 par.KeepUnmatched = true;
-par.addParameter('mwFreq', nan, @isnumeric);
-par.addParameter('logScale', false, @islogical);
-par.addParameter('plotIndividualProcess', false, @islogical);
-par.addParameter('timeUnit', nan, @(x)isstring(x)|ischar(x));
-par.addParameter('startingPoint', nan, @isnumeric);
+par.addParameter('MwFreq', nan, @isnumeric);
+par.addParameter('LogScale', false, @islogical);
+par.addParameter('PlotIndividualProcess', false, @islogical);
+par.addParameter('TimeUnit', nan, @(x)isstring(x)|ischar(x));
+par.addParameter('StartingPoint', nan, @isnumeric);
+par.addParameter('LowerBound', nan, @isnumeric);
+par.addParameter('UpperBound', nan, @isnumeric);
+
 
 % PARSE ARGUMENTS
 if isa(varargin{1}, 'table')
@@ -70,14 +85,14 @@ logT1inv = log10(T1inv);
 args = par.Results;
 % Ask for microwave frequency if use thermal process
 if contains('thermal', mechanisms)
-    if ~isnan(args.mwFreq)
-        omega = args.mwFreq;
+    if ~isnan(args.MwFreq)
+        omega = args.MwFreq;
     else
         error(['You should provide the microwave frequency if using ' ...
             'thermal process']);
     end
     % remove the 1e9 of frequenc, use ns as unit for correlation time tau
-    omega = omega/1e9;
+    omega = omega*2*pi/1e9; % rad/s
 end
 
 % DEFINE FITTING FUNCTIONS FOR DIFFERENT RELAXATION PROCESSES
@@ -127,34 +142,34 @@ fitfunc = eval(fitfuncStr);
 % GUESS STARTING POINT AND DETERMINE BOUNDS
 % Direct process
 A_dir = mean(T1inv)/mean(T);
-A_dirMin = A_dir/100; A_dirMax = A_dir*100;
+A_dirMin = A_dir/1e4; A_dirMax = A_dir*1e4;
 % Raman process
 A_ram = A_dir;
-A_ramMin = A_dir/100; A_ramMax = A_dir*100;
+A_ramMin = A_dir/1e4; A_ramMax = A_dir*1e4;
 theta_D = 100; % K
-theta_DMin = 0; theta_DMax = 1e4;
+theta_DMin = 0; theta_DMax = 1e5;
 % Local process
 A_loc = A_dir;
-A_locMin = A_dir/100; A_locMax = A_dir*100;
+A_locMin = A_dir/1e4; A_locMax = A_dir*1e4;
 Delta_loc = 100; % K
-Delta_locMin = 0; Delta_locMax = 1e4;
+Delta_locMin = 0; Delta_locMax = 1e5;
 % Orbach process
 Delta_orb = 100; % K
 Delta_orbMin = 0; Delta_orbMax = 1e4;
 A_orb = mean(T1inv)/Delta_orb^3;
-A_orbMin = A_orb/100; A_orbMax = A_orb*100;
+A_orbMin = A_orb/1e4; A_orbMax = A_orb*1e4;
 % Thermal process
 if contains('thermal', mechanisms)
     A_therm = omega^3;
-    A_thermMin = A_therm/100; A_thermMax = A_therm*100;
+    A_thermMin = A_therm/1e4; A_thermMax = A_therm*1e4;
     tau_0 = 1;
-    tau_0Min = tau_0/100; tau_0Max = tau_0*100;
+    tau_0Min = tau_0/1e4; tau_0Max = tau_0*1e4;
     E_a = 10;
     E_aMin = 0; E_aMax = 1e4;
 end
 % Power
 A_pow = A_dir;
-A_powMin = A_pow/100; A_powMax = A_pow*100; 
+A_powMin = A_pow/1e4; A_powMax = A_pow*1e4; 
 n = 2;
 nMin = 1; nMax = 7;
 
@@ -166,17 +181,25 @@ for i = 1:numel(coefs)
     bounds(1,i) = eval([coef, 'Min']);
     bounds(2,i) = eval([coef, 'Max']);
 end
+lowerBound = min(bounds,[],1);
+upperBound = max(bounds,[],1);
 
-if ~isnan(args.startingPoint)
-    startingPoint = args.startingPoint;
+if ~isnan(args.StartingPoint)
+    startingPoint = args.StartingPoint;
+end
+if ~isnan(args.LowerBound)
+    lowerBound = args.LowerBound;
+end
+if ~isnan(args.UpperBound)
+    upperBound = args.UpperBound;
 end
 
 % FIT
 ft = fittype(fitfunc, 'independent', 'T');
 [curve, gof] = fit(T, logT1inv, ft, ...
     'StartPoint', startingPoint, ...
-    'Upper', max(bounds,[],1), ...
-    'Lower', min(bounds,[],1));
+    'Upper', upperBound, ...
+    'Lower', lowerBound);
 if nargout == 0
     varargout = {};
 elseif nargout == 1
@@ -186,12 +209,12 @@ elseif nargout == 2
 end
 
 % PLOT
-scatter(T, T1inv);
+scatter(T, T1inv, 'o', 'blue');
 hold on
 plot(T, 10.^curve(T), '-k');
 legend('',strjoin(mechanisms,'+'));
 
-if args.plotIndividualProcess
+if args.PlotIndividualProcess
     for i = 1:numel(mechanisms)
         func = eval(mechanisms{i});
         coefsName = coefsGroup{i};
@@ -203,11 +226,11 @@ end
 hold off
 
 xlabel('Temperature (K)');
-ylabel(sprintf('1/T_1 (1/%s)', unit));
+ylabel(sprintf('{T_1}^{-1} (%s^{-1})', unit));
 title({'Fit spin-lattice relaxation mechanisms', ...
        ['(', strjoin(mechanisms, ', '), ')']});
 
-if args.logScale
+if args.LogScale
     set(gca, 'XScale', 'log', 'YScale', 'log');
 end
 
