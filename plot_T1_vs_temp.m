@@ -40,18 +40,18 @@ end
 
 if args.Inverse
     y = 1./T1;
-    ylab = sprintf("1/T_1 (1/%s)", ...
+    ylab = sprintf('{T_1}^{-1} (%s^{-1})', ...
         FitResult.Properties.VariableUnits{2});
-    ttl = "1/T_1 versus Temperature";
+    ttl = '{T_1}^{-1} versus Temperature';
 else
     y = T1;
-    ylab = sprintf("T_1 (%s)", ...
+    ylab = sprintf('T_1 (%s)', ...
         FitResult.Properties.VariableUnits{2});
-    ttl = "T_1 versus Temperature";
+    ttl = 'T_1 versus Temperature';
 end
 
 scatter(temp, y, args.MarkerSize, args.Marker, args.Color,'filled')
-xlabel("Temperature (K)");
+xlabel('Temperature (K)');
 ylabel(ylab);
 title(ttl)
 set(gcf,'color','w');
