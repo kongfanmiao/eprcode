@@ -27,7 +27,7 @@
 %
 
 
-function FitResult = fit_Tm(path, keywords, varargin)
+function [FitResult, Ycorr] = fit_Tm(path, keywords, varargin)
 
 % parse the input arguments
 par = inputParser;
@@ -110,6 +110,7 @@ end
 FitResult.Temperature = Temperature;
 FitResult.("R-Squared") = zeros(numFiles,1);
 
+Ycorr = cell(numFiles,1);
 % Do the fitting
 for i = 1:numFiles
     f = Files{i};
@@ -118,17 +119,33 @@ for i = 1:numFiles
     % first use exponfit to get an estimate
     % "c1 + c2*exp(-k*x)"
     [k,c,yfit] = exponfit(x,y,1);
+    % use fft to get an estimate of the modulation frequency
+    N = numel(x);
+    yFFT = abs(fft(y-yfit))/N;
+    freqAxis = (0:N/2-1)/(N*(x(2)-x(1)));
+    yFFT = yFFT(1:N/2);
+    [~, loc] = max(yFFT);
+    omega = freqAxis(loc);
+
     switch fitfunc
         case "Exp1"
-            func = "c1 + c2*exp(-x/k)";
-            fo = fitoptions(func,"StartPoint",[c 1/k]);
+            func = @(c1, c2, k, c3, c4, omega, phi_1, phi_2, x) ...
+                (c1 + c2*exp(-x/k)).*(1 + c3*sin(omega*x+phi_1) + ...
+                c4*sin(2*omega*x+phi_2));
+            bounds = [c(1)/2,c(2)/100, 0.5/k,1e-3,1e-3,omega/10,-inf,-inf;
+                      c(1)*2,c(2)*100, 2/k,100,100,omega*10,inf,inf];
+            fo = fitoptions(func, ...
+                "StartPoint",[c(1), c(2), 1/k, 1, 1, omega, 0, 0], ...
+                "Lower",min(bounds,[],1), ...
+                "Upper",max(bounds,[],1));
             ft = fittype(func,"options",fo);
             [curve, gof] = fit(x,y,ft);
             FitResult.Tm(i) = curve.k;
             FitResult.("R-Squared")(i) = gof.rsquare;
             yfit = curve(x);
         case "Exp2"
-            func = "c1 + c2*exp(-x/k1) + c3*exp(-x/k2)";
+            func = @(c1, c2, c3, k1, k2, x) ...
+                c1 + c2*exp(-x/k1) + c3*exp(-x/k2);
             bounds = [c(1)/2 c(2)/100 c(2)/100 0.1/k 0.0001/k;...
                       c(1)*2 c(2)*100 c(2)*100 1000/k 10/k];
             fo = fitoptions(func, ...
@@ -144,9 +161,10 @@ for i = 1:numFiles
             FitResult.("R-Squared")(i) = gof.rsquare; 
             yfit = curve(x);
         case "StrExp"
-            func = "c1 + c2*exp(-(x/k)^c3)";
-            bounds = [c/100 0.2 0.01/k;...
-                      c*100 2.0 100/k];
+            func = @(c1, c2, c3, k, x) ...
+                c1 + c2*exp(-(x/k).^c3);
+            bounds = [c/100 0.99 0.01/k;...
+                      c*100 1.01 100/k];
             fo = fitoptions(func, ...
                 "StartPoint",[c 1 1/k], ...
                 "Lower",min(bounds,[],1), ...
@@ -173,6 +191,8 @@ for i = 1:numFiles
     xMax = max(xMax, max(x));
     yMin = min(yMin, min(real(y)));
     yMax = max(yMax, max(real(y)));
+
+    Ycorr{i} = [x, y - yfit];
 end
 title(strcat(titleStr, sprintf("\n(%s)",fitfuncFullName(fitfunc))), ...
     "Interpreter","none");
