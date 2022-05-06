@@ -26,14 +26,14 @@ end
 
 if ~isempty(args.inverseT1)
     y = 1./Tm;
-    ylab = sprintf("1/T_m (1/%s)", ...
+    ylab = sprintf('{T_m}^{-1} (%s^{-1})', ...
         FitResult.Properties.VariableUnits{2});
-    ttl = "1/T_m versus Temperature";
+    ttl = '{T_m}^{-1} versus Temperature';
 else
     y = Tm;
-    ylab = sprintf("T_m (1/%s)", ...
+    ylab = sprintf('T_m (%s)', ...
         FitResult.Properties.VariableUnits{2});
-    ttl = "T_m versus Temperature";
+    ttl = 'T_m versus Temperature';
 end
 
 set(gcf,'color','w');
