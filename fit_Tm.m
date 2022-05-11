@@ -115,6 +115,8 @@ Ycorr = cell(numFiles,1);
 for i = 1:numFiles
     f = Files{i};
     [x, y] = eprload(fullfile(path, f));
+    % Change x axis unit
+    x = x/timeScaleFactor;
     y = real(y);          
     % first use exponfit to get an estimate
     % "c1 + c2*exp(-k*x)"
@@ -156,7 +158,7 @@ for i = 1:numFiles
             [curve, gof] = fit(x,y,ft);
             [T_long, T_longPerc, T_short, T_shortPerc] = ...
                 get_Tlong_and_Tshort([curve.k1, curve.k2], ...
-                [curve.c1, curve.c2, curve.c3], timeScaleFactor);
+                [curve.c1, curve.c2, curve.c3]);
             FitResult{i,2:end-1} = [T_long, T_longPerc, T_short, T_shortPerc];
             FitResult.("R-Squared")(i) = gof.rsquare; 
             yfit = curve(x);
@@ -175,8 +177,6 @@ for i = 1:numFiles
             FitResult.("R-Squared")(i) = gof.rsquare; 
             yfit = curve(x);
     end
-    % Change x axis unit
-    x = x/timeScaleFactor;
     % Normalize y axis
     yM = max(y);
     y = y/yM;
