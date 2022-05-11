@@ -1,14 +1,13 @@
 function [Tl, TlPerc, Ts, TsPerc] = ...
-    get_Tlong_and_Tshort(k, c, timeScaleFactor)
+    get_Tlong_and_Tshort(k, c)
 % Extract T_long, T_short and their coefficients from bi-exponential fitting
 
 arguments
     k (:,2) double
     c (:,3) double
-    timeScaleFactor double
 end
 
-TlTs = k/timeScaleFactor;
+TlTs = k;
 [Tl, TlIdx] = max(TlTs,[],2); 
 [Ts, TsIdx] = min(TlTs,[],2);
 TlCoef = zeros(size(TlIdx));
