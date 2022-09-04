@@ -11,7 +11,7 @@
 %       Mechanism   relaxation mechanism to use
 %                   {'direct', 'raman'}
 %       MwFreq      provide microwave frequency if using thermal process,
-%                   by default in GHz unit. (optional)
+%                   by default in Hz unit. (optional)
 %       LogScale    plot x and y axis in log scale
 %       PlotIndividualProcess
 %                   plot each summand of relaxation processes
@@ -42,7 +42,10 @@ par.addParameter('TimeUnit', nan, @(x)isstring(x)|ischar(x));
 par.addParameter('StartingPoint', nan, @isnumeric);
 par.addParameter('LowerBound', nan, @isnumeric);
 par.addParameter('UpperBound', nan, @isnumeric);
-
+par.addParameter('SearchRange', 1e3, @isnumeric);
+par.addParameter('MarkerSize', 100, @isnumeric);
+par.addParameter('filled', true, @islogical);
+par.addParameter('localLimit', 100, @isnumeric);
 
 % PARSE ARGUMENTS
 if isa(varargin{1}, 'table')
@@ -73,7 +76,7 @@ elseif isa(varargin{1}, 'numeric')
         mechanisms = arrayfun(@(s)validatestring(s, allMechanisms), ...
             mechanisms, 'UniformOutput', false);
         par.parse(varargin{4:end});
-        unit = par.Results.timeUnit;
+        unit = par.Results.TimeUnit;
     catch
         error(['If the first argument is numeric, the second argument ' ...
             'must be also numeric and with the same length']);
@@ -82,6 +85,7 @@ end
 logT1inv = log10(T1inv);
 
 args = par.Results;
+SearchRange = args.SearchRange;
 % Ask for microwave frequency if use thermal process
 if contains('thermal', mechanisms)
     if ~isnan(args.MwFreq)
@@ -102,7 +106,7 @@ raman = @(A_ram, theta_D, T) ...
     @(x)(x.^8.*exp(x))./((exp(x)-1).^2), 0, 1/xx), T/theta_D);
 % Delta_loc is in unit of K
 local = @(A_loc, Delta_loc, T) ...
-    A_loc*(exp(Delta_loc./T))./(exp(Delta_loc./T)-1).^2;
+    (A_loc*(exp(Delta_loc./T))./(exp(Delta_loc./T)-1).^2).*(T>args.localLimit);
 % Delta_orb is in unit of K
 orbach = @(A_orb, Delta_orb, T) (A_orb*Delta_orb^3)./(exp(Delta_orb./T)-1);
 thermal = @(A_therm, tau_0, E_a, T) ...
@@ -141,34 +145,34 @@ fitfunc = eval(fitfuncStr);
 % GUESS STARTING POINT AND DETERMINE BOUNDS
 % Direct process
 A_dir = mean(T1inv)/mean(T);
-A_dirMin = A_dir/1e2; A_dirMax = A_dir*1e2;
+A_dirMin = A_dir/SearchRange; A_dirMax = A_dir*SearchRange;
 % Raman process
 A_ram = A_dir;
-A_ramMin = A_dir/1e2; A_ramMax = A_dir*1e2;
+A_ramMin = A_dir/SearchRange; A_ramMax = A_dir*SearchRange;
 theta_D = 100; % K
 theta_DMin = 0; theta_DMax = 1e5;
 % Local process
 A_loc = A_dir;
-A_locMin = A_dir/1e2; A_locMax = A_dir*1e2;
+A_locMin = A_dir/SearchRange; A_locMax = A_dir*SearchRange;
 Delta_loc = 100; % K
 Delta_locMin = 0; Delta_locMax = 1e5;
 % Orbach process
 Delta_orb = 100; % K
-Delta_orbMin = 0; Delta_orbMax = 1e2;
+Delta_orbMin = 0; Delta_orbMax = SearchRange;
 A_orb = mean(T1inv)/Delta_orb^3;
-A_orbMin = A_orb/1e2; A_orbMax = A_orb*1e2;
+A_orbMin = A_orb/SearchRange; A_orbMax = A_orb*SearchRange;
 % Thermal process
 if contains('thermal', mechanisms)
     A_therm = omega^3;
-    A_thermMin = A_therm/1e2; A_thermMax = A_therm*1e2;
+    A_thermMin = A_therm/SearchRange; A_thermMax = A_therm*SearchRange;
     tau_0 = 1;
-    tau_0Min = tau_0/1e2; tau_0Max = tau_0*1e2;
+    tau_0Min = tau_0/SearchRange; tau_0Max = tau_0*SearchRange;
     E_a = 10;
-    E_aMin = 0; E_aMax = 1e2;
+    E_aMin = 0; E_aMax = SearchRange;
 end
 % Power
 A_pow = A_dir;
-A_powMin = A_pow/1e2; A_powMax = A_pow*1e2; 
+A_powMin = A_pow/SearchRange; A_powMax = A_pow*SearchRange; 
 n = 2;
 nMin = 1; nMax = 7;
 
@@ -208,9 +212,14 @@ elseif nargout == 2
 end
 
 % PLOT
-scatter(T, T1inv, 'o', 'blue');
+additionalArgs = {};
+if args.filled
+    additionalArgs = {'filled'};
+end
+scatter(T, T1inv, args.MarkerSize, 'o', 'blue', additionalArgs{:});
 hold on
-plot(T, 10.^curve(T), '-k');
+Tnew = min(T):max(T);
+plot(Tnew, 10.^curve(Tnew), '-k');
 legend('',strjoin(mechanisms,'+'));
 
 if args.PlotIndividualProcess
@@ -236,9 +245,9 @@ end
 set(gcf,'color','w');
 box on
 
-fig = gcf;
-if fig.WindowStyle ~= "docked"
-    set(fig,'position',[10,10,900,600]);
-end
+% fig = gcf;
+% if fig.WindowStyle ~= "docked"
+%     set(fig,'position',[10,10,900,600]);
+% end
 
 end
