@@ -38,7 +38,9 @@ par.addOptional('FitFunc', 'Exp2', checkFitFunc);
 par.addParameter("MarkerSize", 20, @isnumeric);
 
 checkTimeUnit = @(x) any(validatestring(x, {'ns', 'us', 'ms', 's'}));
-par.addParameter("TimeUnit", 'us', checkTimeUnit);
+par.addParameter("TimeUnit", 'ns', checkTimeUnit);
+par.addParameter('LegendColumns', nan, @isnumeric);
+par.addParameter('LegendPosition', 'bestoutside', @ischar);
 
 par.KeepUnmatched = true;
 
@@ -80,7 +82,7 @@ end
 
 % Set the x and y axis label
 xlabelStr = sprintf("Recovery time (%s)", timeUnit);
-ylabelStr = "Signal";
+ylabelStr = "Signal (arb. u.)";
 
 xMax = 0;
 xMin = inf;
@@ -128,13 +130,14 @@ for i = 1:numFiles
             fo = fitoptions(func,"StartPoint",[c 1/k]);
             ft = fittype(func,"options",fo);
             [curve, gof] = fit(x,y,ft);
-            FitResult.T_long(i) = 1/curve.k;
-            FitResult.("R-Square")(i) = gof.rsquare;
+            FitResult.T1(i) = curve.k;
+            FitResult.("R-Squared")(i) = gof.rsquare;
             yfit = curve(x);
         case "Exp2"
-            func = "c1 + c2*exp(-x/k1) + c3*exp(-x/k2)";
-            bounds = [c(1)/2 c(2)/10 c(2)/10 0.01/k 0.01/k;...
-                      c(1)*2 c(2)*10 c(2)*10 100/k 100/k];
+            func = @(c1, c2, c3, k1, k2, x) ...
+                c1 + c2*exp(-x/k1) + c3*exp(-x/k2);
+            bounds = [c(1)/2 c(2)/100 c(2)/100 1/k 0.001/k;...
+                      c(1)*2 c(2)*100 c(2)*100 1000/k 1/k];
             fo = fitoptions(func, ...
                 "StartPoint",[c(1) c(2) c(2) 1/k 1/k], ...
                 "Lower",min(bounds,[],1), ...
@@ -179,7 +182,13 @@ end
 set(gca,'xscale','log');
 title(strcat(titleStr, sprintf("\n(%s)",fitfuncFullName(fitfunc))), ...
     "Interpreter","none");
-legend(labels, "Location","bestoutside", "Interpreter","none");
+if isnan(args.LegendColumns)
+    numCol = ceil(numel(labels)/16);
+else
+    numCol = args.LegendColumns;
+end
+legend(labels, "Location", args.LegendPosition, "Interpreter","none", ...
+    'NumColumns', numCol);
 ylabel(ylabelStr);
 xlabel(xlabelStr);
 xlim([xMin xMax]);
@@ -189,9 +198,9 @@ hold off
 set(gcf,'color','w');
 box on
 
-fig = gcf;
-if fig.WindowStyle ~= "docked"
-    set(fig,'position',[10,10,900,600]);
-end
+% fig = gcf;
+% if fig.WindowStyle ~= "docked"
+%     set(fig,'position',[10,10,900,600]);
+% end
 
 end
