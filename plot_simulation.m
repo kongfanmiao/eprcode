@@ -15,7 +15,7 @@ fitSpc = data{:,3};
 plot(B, spc, '-k',  ...
      B, fitSpc, '--b', 'LineWidth', 1);
 xlim([min(B) max(B)]);
-ylim([min(spc) max(spc)]);
+ylim([min(spc) max(max(spc), max(fitSpc))*1.1]);
 xlabel(sprintf('%s (%s)', names{1}, units{1}));
 ylabel(sprintf('%s (%s)', names{2}, units{2}));
 titleStr = fileName(1:end-4);
@@ -25,9 +25,9 @@ set(gca, 'LineWidth', 1.5);
 set(gcf,'color','w');
 box on
 
-fig = gcf;
-if fig.WindowStyle ~= "docked"
-    set(fig,'position',[10,10,900,600]);
-end
+% fig = gcf;
+% if fig.WindowStyle ~= "docked"
+%     set(fig,'position',[10,10,900,600]);
+% end
 
 end

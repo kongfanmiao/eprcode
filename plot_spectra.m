@@ -70,7 +70,7 @@ labels = cell(size(Files));
 
 % Set the x and y axis label
 xlabelStr = sprintf("B (%s)", args.FieldUnit);
-ylabelStr = "Signal";
+ylabelStr = "Signal (arb. u.)";
 
 xMax = 0;
 xMin = inf;
@@ -144,16 +144,16 @@ legend(labels, "Location","best", "Interpreter","none");
 ylabel(ylabelStr);
 xlabel(xlabelStr);
 xlim([xMin xMax]);
-ylim([yMin yMax]);
+ylim([yMin yMax*1.05]);
 yticks([]);
 hold off
 set(gcf,'color','w');
 box on
 
-fig = gcf;
-if fig.WindowStyle ~= "docked"
-    set(fig,'position',[10,10,900,600]);
-end
+% fig = gcf;
+% if fig.WindowStyle ~= "docked"
+%     set(fig,'position',[10,10,900,600]);
+% end
 
 end
 

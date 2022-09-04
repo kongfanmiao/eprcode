@@ -6,7 +6,7 @@ function plot_TmStretch(FitResult)
 xlabel('Temperature (K)');
 
 yyaxis left
-scatter(FitResult.Temperature, FitResult.Tm, 100, 'filled','o');
+scatter(FitResult.Temperature, FitResult.Tm, 100, 'filled','o','b');
 ylabel(sprintf("T_m (%s)", FitResult.Properties.VariableUnits{2}));
 
 yyaxis right
@@ -20,9 +20,9 @@ hold off
 set(gcf,'color','w');
 box on
 
-fig = gcf;
-if fig.WindowStyle ~= "docked"
-    set(fig,'position',[10,10,900,600]);
-end
+% fig = gcf;
+% if fig.WindowStyle ~= "docked"
+%     set(fig,'position',[10,10,900,600]);
+% end
 
 end

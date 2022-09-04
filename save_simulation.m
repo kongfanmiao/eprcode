@@ -1,8 +1,8 @@
 function save_simulation(B, spc, fitResult, path, dataInfo)
 
-fitSpec = reshape(fitResult.fitSpec, [], 1);
-fitSys = fitResult.Sys;
-data = table(B, spc, fitSpec);
+fitSpc = reshape(fitResult.fit, [], 1);
+fitSys = fitResult.argsfit{1};
+data = table(B, spc, fitSpc);
 data.Properties.VariableNames = {'B', 'Signal', 'Simulated signal'};
 data.Properties.VariableUnits = {'mT', 'arb. un.', 'arb. un.'};
 

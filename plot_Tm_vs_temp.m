@@ -7,6 +7,7 @@ par.addParameter('Color', 'b', @(x)isstring(x)|ischar(x));
 par.addParameter('Marker', 'o', @(x)any(validatestring(x, ...
     {'o','+','*','.','x','-','|','s','d','^','v','>','<','p','h'})));
 par.addParameter('MarkerSize', 100, @isnumeric);
+par.addParameter('filled', true, @islogical);
 par.KeepUnmatched = true;
 
 parse(par, varargin{:});
@@ -36,17 +37,22 @@ else
     ttl = 'T_m versus Temperature';
 end
 
+additionalArgs = {};
+if args.filled
+    additionalArgs = {'filled'};
+end
 set(gcf,'color','w');
-scatter(temp, y, args.MarkerSize, args.Marker, args.Color,'filled')
+scatter(temp, y, args.MarkerSize, args.Marker, args.Color, ...
+    additionalArgs{:});
 xlabel("Temperature (K)");
 ylabel(ylab);
 title(ttl)
 box on
 
-fig = gcf;
-if fig.WindowStyle ~= "docked"
-    set(fig,'position',[10,10,900,600]);
-end
+% fig = gcf;
+% if fig.WindowStyle ~= "docked"
+%     set(fig,'position',[10,10,900,600]);
+% end
 
 
 end

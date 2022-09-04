@@ -1,4 +1,4 @@
-function FitResult = plot_Tm(path, keywords)
+function plot_Tm(path, keywords)
 % Plot data files in given path based on given keywords. The keywords can 
 % be as many as you want, and can be in any sequence.
 
@@ -21,7 +21,7 @@ labels = cell(size(Files));
 
 % Set the x and y axis label
 xlabelStr = strcat("2",char([0xD835 0xDF0F]), " (ns)");
-ylabelStr = "Signal";
+ylabelStr = "Signal (arb. u.)";
 
 xMax = 0;
 xMin = inf;
@@ -54,10 +54,10 @@ yticks([]);
 hold off
 box on
 
-fig = gcf;
-if fig.WindowStyle ~= "docked"
-    set(fig,'position',[10,10,900,600]);
-end
+% fig = gcf;
+% if fig.WindowStyle ~= "docked"
+%     set(fig,'position',[10,10,900,600]);
+% end
 end
 
 
