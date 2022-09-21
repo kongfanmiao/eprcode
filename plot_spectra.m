@@ -41,7 +41,7 @@ function plot_spectra(path, keywords, varargin)
 % parse the input arguments
 par = inputParser;
 
-par.addParameter('Color', 'map');
+par.addParameter('Color', 'k');
 par.addParameter('Offset', 0, @isnumeric);
 par.addParameter('NormalizeField', false, @islogical);
 par.addParameter('NormalizeSignal', false, @islogical);
