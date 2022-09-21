@@ -10,7 +10,7 @@
 %       Color           color, 'blue' by default
 %       Marker          marker, 'o' by default
 %       MarkerSize      marker size, 100 by default
-%
+%       filled          filled circle or not
 %       
 function plot_T1_vs_temp(FitResult,varargin)
 
