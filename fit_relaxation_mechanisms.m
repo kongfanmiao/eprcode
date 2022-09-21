@@ -21,6 +21,10 @@
 %                   starting point of the fitting
 %       LowerBound  lower bound for the fitting
 %       UpperBound  upper bound for the fitting
+%       SearchRange search range of parameters
+%       MarkerSize  marker size
+%       filled      filled markers
+%       localLimit  temperature limit of local mode
 %
 %   Output
 %       curve       fitted curve
@@ -150,15 +154,15 @@ A_dirMin = A_dir/SearchRange; A_dirMax = A_dir*SearchRange;
 A_ram = A_dir;
 A_ramMin = A_dir/SearchRange; A_ramMax = A_dir*SearchRange;
 theta_D = 100; % K
-theta_DMin = 0; theta_DMax = 1e5;
+theta_DMin = 10; theta_DMax = 1e4;
 % Local process
 A_loc = A_dir;
 A_locMin = A_dir/SearchRange; A_locMax = A_dir*SearchRange;
 Delta_loc = 100; % K
-Delta_locMin = 0; Delta_locMax = 1e5;
+Delta_locMin = 10; Delta_locMax = 1e5;
 % Orbach process
 Delta_orb = 100; % K
-Delta_orbMin = 0; Delta_orbMax = SearchRange;
+Delta_orbMin = 10; Delta_orbMax = Delta_orb*SearchRange;
 A_orb = mean(T1inv)/Delta_orb^3;
 A_orbMin = A_orb/SearchRange; A_orbMax = A_orb*SearchRange;
 % Thermal process
@@ -196,7 +200,7 @@ end
 if ~isnan(args.UpperBound)
     upperBound = args.UpperBound;
 end
-
+disp(lowerBound)
 % FIT
 ft = fittype(fitfunc, 'independent', 'T');
 [curve, gof] = fit(T, logT1inv, ft, ...
