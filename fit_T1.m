@@ -41,6 +41,7 @@ checkTimeUnit = @(x) any(validatestring(x, {'ns', 'us', 'ms', 's'}));
 par.addParameter("TimeUnit", 'ns', checkTimeUnit);
 par.addParameter('LegendColumns', nan, @isnumeric);
 par.addParameter('LegendPosition', 'bestoutside', @ischar);
+par.addParameter('Color', nan, @ischar);
 
 par.KeepUnmatched = true;
 
@@ -168,10 +169,15 @@ for i = 1:numFiles
     yM = max(y);
     y = y/yM;
     yfit = yfit/yM;
-    scatter(x,y,args.MarkerSize, "MarkerEdgeColor",colorList(i,:));
+    if ~args.Color
+        c = colorList(i,:);
+    else
+        c = args.Color;
+    end
+    scatter(x,y,args.MarkerSize, "MarkerEdgeColor",c);
     labels{2*i-1} = strcat(num2str(Temperature(i))," K data");
     hold on
-    plot(x,yfit, "Color", colorList(i,:));
+    plot(x,yfit, "Color", c);
     labels{2*i} = strcat(num2str(Temperature(i))," K Fit");
     hold on
     xMin = min(xMin, min(x));
