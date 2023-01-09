@@ -6,7 +6,7 @@
 %   Input
 %       FitResult   table containing T1 fitting result
 %       T           temperature array
-%       T1          T1 array
+%       T1          T1 array, will be converted to seconds
 %       (either provide FitResult or T and T1)
 %       Mechanism   relaxation mechanism to use
 %                   {'direct', 'raman'}
@@ -24,7 +24,6 @@
 %       SearchRange search range of parameters
 %       MarkerSize  marker size
 %       filled      filled markers
-%       localLimit  temperature limit of local mode
 %
 %   Output
 %       curve       fitted curve
@@ -34,7 +33,8 @@
 
 function varargout = fit_relaxation_mechanisms(varargin)
 
-allMechanisms = {'direct', 'raman', 'orbach', 'local', 'thermal', 'power'};
+allMechanisms = {'direct', 'raman', 'orbach', 'local', 'thermal', ...
+    'cosech', 'power', 'cross'};
 
 
 par = inputParser;
@@ -49,9 +49,10 @@ par.addParameter('UpperBound', nan, @isnumeric);
 par.addParameter('SearchRange', 1e3, @isnumeric);
 par.addParameter('MarkerSize', 100, @isnumeric);
 par.addParameter('filled', true, @islogical);
-par.addParameter('localLimit', 100, @isnumeric);
 
-% PARSE ARGUMENTS
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Parse arguments
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 if isa(varargin{1}, 'table')
     FitResult = varargin{1};
     T = FitResult.Temperature;
@@ -63,7 +64,6 @@ if isa(varargin{1}, 'table')
     else
         error('There is no T1 or T_long in the FitResult table');
     end
-    T1inv = 1./T1;
     unit = FitResult.Properties.VariableUnits{2};
     mechanisms = string(varargin{2});
     mechanisms = arrayfun(@(s)validatestring(s, allMechanisms), ...
@@ -75,7 +75,6 @@ elseif isa(varargin{1}, 'numeric')
         assert(numel(varargin{1})==numel(varargin{2}));
         T = varargin{1};
         T1 = varargin{2};
-        T1inv = 1./T1;
         mechanisms = string(varargin{3});
         mechanisms = arrayfun(@(s)validatestring(s, allMechanisms), ...
             mechanisms, 'UniformOutput', false);
@@ -86,6 +85,19 @@ elseif isa(varargin{1}, 'numeric')
             'must be also numeric and with the same length']);
     end
 end
+% convert T1 to seconds. So that 1/T1 will be a large value
+switch unit
+    case 'ns'
+        timeScaleFactor = 1e9;
+    case '\mus'
+        timeScaleFactor = 1e6;
+    case 'ms'
+        timeScaleFactor = 1e3;
+    case 's'
+        timeScaleFactor = 1;
+end
+T1 = T1/timeScaleFactor;
+T1inv = 1./T1;
 logT1inv = log10(T1inv);
 
 args = par.Results;
@@ -102,7 +114,9 @@ if contains('thermal', mechanisms)
     omega = omega*2*pi/1e9; % rad/s
 end
 
-% DEFINE FITTING FUNCTIONS FOR DIFFERENT RELAXATION PROCESSES
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Define fitting functions for different relaxation processes
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % fit log(1/T1) ~ log(T)
 direct = @(A_dir, T) A_dir*T;
 raman = @(A_ram, theta_D, T) ...
@@ -110,14 +124,19 @@ raman = @(A_ram, theta_D, T) ...
     @(x)(x.^8.*exp(x))./((exp(x)-1).^2), 0, 1/xx), T/theta_D);
 % Delta_loc is in unit of K
 local = @(A_loc, Delta_loc, T) ...
-    (A_loc*(exp(Delta_loc./T))./(exp(Delta_loc./T)-1).^2).*(T>args.localLimit);
+    A_loc*(exp(Delta_loc./T))./(exp(Delta_loc./T)-1).^2;
 % Delta_orb is in unit of K
 orbach = @(A_orb, Delta_orb, T) (A_orb*Delta_orb^3)./(exp(Delta_orb./T)-1);
 thermal = @(A_therm, tau_0, E_a, T) ...
     A_therm*(2*tau_0*exp(E_a./T))./(1+omega^2*(tau_0*exp(E_a./T)).^2);
+cosech = @(A_tls, Delta_tls, T) ...
+    A_tls*2./(exp(Delta_tls./T)-exp(-Delta_tls./T));
 power = @(A_pow, n, T) A_pow*T.^n;
+cross = @(A_cro, Delta_cro, T) A_cro./(1+exp(Delta_cro./T));
 
-% CONSTRUCT FINAL FITTING FUNCTION
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Construct final fitting function 
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 coefs = {};
 coefsGroup = cell(1,numel(mechanisms));
 funcStr = {};
@@ -146,7 +165,9 @@ funcStr = ['log10(', strjoin(funcStr, '+') ,')'];
 fitfuncStr = [coefStr, funcStr];
 fitfunc = eval(fitfuncStr);
 
-% GUESS STARTING POINT AND DETERMINE BOUNDS
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Guess starting point and determine bounds
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 % Direct process
 A_dir = mean(T1inv)/mean(T);
 A_dirMin = A_dir/SearchRange; A_dirMax = A_dir*SearchRange;
@@ -174,12 +195,21 @@ if contains('thermal', mechanisms)
     E_a = 10;
     E_aMin = 0; E_aMax = SearchRange;
 end
+% cosech
+A_tls = mean(T1inv); Delta_tls = 50;
+A_tlsMin = A_tls/SearchRange; A_tlsMax = A_tls*SearchRange;
+Delta_tlsMin = 1; Delta_tlsMax = Delta_tls*SearchRange;
 % Power
 A_pow = A_dir;
 A_powMin = A_pow/SearchRange; A_powMax = A_pow*SearchRange; 
 n = 2;
 nMin = 1; nMax = 7;
+% cross
+A_cro = mean(T1inv); Delta_cro = 10;
+A_croMin = A_cro/SearchRange; A_croMax = A_cro*SearchRange;
+Delta_croMin = 1; Delta_croMax = Delta_cro*SearchRange;
 
+% Define starting point and upper, lower bound
 startingPoint = zeros(1,numel(coefs));
 bounds = zeros(2, numel(coefs));
 for i = 1:numel(coefs)
@@ -200,8 +230,10 @@ end
 if ~isnan(args.UpperBound)
     upperBound = args.UpperBound;
 end
-disp(lowerBound)
-% FIT
+
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Fit
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
 ft = fittype(fitfunc, 'independent', 'T');
 [curve, gof] = fit(T, logT1inv, ft, ...
     'StartPoint', startingPoint, ...
@@ -215,30 +247,38 @@ elseif nargout == 2
     varargout{:} = [curve, gof];
 end
 
-% PLOT
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Plot
+% %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
 additionalArgs = {};
 if args.filled
     additionalArgs = {'filled'};
 end
+% Plot data in seconds
 scatter(T, T1inv, args.MarkerSize, 'o', 'blue', additionalArgs{:});
 hold on
-Tnew = min(T):max(T);
-plot(Tnew, 10.^curve(Tnew), '-k');
-legend('',strjoin(mechanisms,'+'));
+Tnew = min(T)*0.98:max(T)*1.02;
+plot(Tnew, 10.^curve(Tnew), '-k', 'LineWidth', 1.5);
+legend('',strjoin(mechanisms,'+'), 'location', 'best');
 
 if args.PlotIndividualProcess
     for i = 1:numel(mechanisms)
         func = eval(mechanisms{i});
         coefsName = coefsGroup{i};
         coefsValue = cellfun(@(x){curve.(x)}, coefsName);
-        plot(T, func(coefsValue{:}, T), '--');
+        plot(Tnew, func(coefsValue{:}, Tnew), '--');
     end
     legend('',strjoin(mechanisms,'+'),mechanisms{:}, "location", 'best');
 end
 hold off
 
 xlabel('Temperature (K)');
-ylabel(sprintf('{T_1}^{-1} (%s^{-1})', unit));
+ylabel('{T_1}^{-1} (s^{-1})');
+ylim([0 max(T1inv)*1.1]);
+if args.LogScale
+    ylim([min(T1inv)/2 max(T1inv)*2]);
+end
 title({'Fit spin-lattice relaxation mechanisms', ...
        ['(', strjoin(mechanisms, ', '), ')']});
 
