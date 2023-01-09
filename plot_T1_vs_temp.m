@@ -55,8 +55,8 @@ additionalArgs = {};
 if args.filled
     additionalArgs = {'filled'};
 end
-scatter(temp, y, args.MarkerSize, args.Marker, args.Color, ...
-    additionalArgs{:});
+scatter(temp, y, args.MarkerSize, args.Marker, additionalArgs{:}, ...
+    'markeredgecolor', args.Color, 'markerfacecolor', args.Color);
 xlabel('Temperature (K)');
 ylabel(ylab);
 title(ttl)
