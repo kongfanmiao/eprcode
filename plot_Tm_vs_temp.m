@@ -1,7 +1,7 @@
 function plot_Tm_vs_temp(FitResult,varargin)
 
 par = inputParser;
-par.addOptional('inverseT1', '', @(x)any(validatestring(x, ...
+par.addOptional('inverseTm', '', @(x)any(validatestring(x, ...
     {'', 'inverse'})));
 par.addParameter('Color', 'b', @(x)isstring(x)|ischar(x));
 par.addParameter('Marker', 'o', @(x)any(validatestring(x, ...
@@ -25,7 +25,7 @@ catch
     end
 end
 
-if ~isempty(args.inverseT1)
+if ~isempty(args.inverseTm)
     y = 1./Tm;
     ylab = sprintf('{T_m}^{-1} (%s^{-1})', ...
         FitResult.Properties.VariableUnits{2});
@@ -42,8 +42,8 @@ if args.filled
     additionalArgs = {'filled'};
 end
 set(gcf,'color','w');
-scatter(temp, y, args.MarkerSize, args.Marker, args.Color, ...
-    additionalArgs{:});
+scatter(temp, y, args.MarkerSize, args.Marker, additionalArgs{:}, ...
+    'markeredgecolor', args.Color, 'markerfacecolor', args.Color);
 xlabel("Temperature (K)");
 ylabel(ylab);
 title(ttl)
