@@ -17,12 +17,27 @@ rsquare = cellfun(@(t)t.("R-Squared"), FitResults, 'UniformOutput',false);
 clf;
 set(gcf,'color','w');
 for i = 1:numel(temp)
-    scatter(temp{i}, rsquare{i}, 'filled')
+    label = labels{i};
+    if contains(label, 'mono', 'IgnoreCase',true)
+        color = 'r';
+        marker = '*';
+    elseif contains(label, 'bi', 'IgnoreCase',true)
+        color = 'b';
+        marker = '^';
+    elseif contains(label, 'str', 'IgnoreCase',true)
+        color = 'm';
+        marker = 'v';
+    else
+        color = 'k';
+        marker = 'o';
+    end
+    scatter(temp{i}, rsquare{i}, 50, marker, color)
     hold on
 end
 legend(labels);
 xlabel('Temperature (K)');
-ylabel('R-Squared')
+ylabel('R-Squared');
+title('Compare goodness of different fitting model');
 hold off
 box on
 
