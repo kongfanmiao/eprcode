@@ -1,4 +1,5 @@
 function save_Tm(FitResult, path, fileName)
+% Save Tm values. Always save in ns unit
 
 temp = FitResult.Temperature;
 
@@ -13,10 +14,20 @@ catch
 end
 
 timeUnit = FitResult.Properties.VariableUnits{2};
-
+switch timeUnit
+    case 'ns'
+        timeScaleFactor = 1;
+    case '\mus'
+        timeScaleFactor = 1e3;
+    case 'ms'
+        timeScaleFactor = 1e6;
+    case 's'
+        timeScaleFactor = 1e9;
+end
+Tm = Tm*timeScaleFactor;
 data = table(temp, Tm);
 data.Properties.VariableNames = {'Temperature', 'Tm'};
-data.Properties.VariableUnits = {'K', timeUnit};
+data.Properties.VariableUnits = {'K', 'ns'};
 
 filePath = fullfile(path, [fileName, '.csv']);
 writecell(data.Properties.VariableNames, filePath);
