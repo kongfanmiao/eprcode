@@ -41,14 +41,15 @@ function plot_spectra(path, keywords, varargin)
 % parse the input arguments
 par = inputParser;
 
-par.addParameter('Color', 'k');
+par.addParameter('Color', 'map');
 par.addParameter('Offset', 0, @isnumeric);
 par.addParameter('NormalizeField', false, @islogical);
 par.addParameter('NormalizeSignal', false, @islogical);
 par.addParameter('ScaleSignal', 1, @isnumeric);
 par.addParameter('Shift', 0, @isnumeric);
 par.addParameter('FieldUnit', 'mT', @(x)any(validatestring(x, {'mT', 'G'})));
-
+% par.addParameter('LineWidth', 1.5, @isnumeric);
+% par.addParameter('AxLineWidth', 1.5, @isnumeric);
 par.KeepUnmatched = true;
 
 parse(par, varargin{:});
@@ -76,7 +77,7 @@ xMax = 0;
 xMin = inf;
 yMax = 0;
 yMin = inf;
-colorList = jet(numFiles);
+colorList = winter(numFiles);
 
 for i = 1:numFiles
     f = Files{i};
@@ -127,7 +128,7 @@ for i = 1:numFiles
         c = color;
     end
     
-    plot(x, y, "Color",c);
+    plot(x, y, "Color",c); %, 'LineWidth',args.LineWidth);
     labels{i} = strcat(num2str(Temperature(i))," K");
     hold on
     xMin = min(xMin, min(x));
@@ -147,6 +148,7 @@ xlim([xMin xMax]);
 ylim([yMin yMax*1.05]);
 yticks([]);
 hold off
+% set(gca, 'LineWidth', args.AxLineWidth)
 set(gcf,'color','w');
 box on
 
