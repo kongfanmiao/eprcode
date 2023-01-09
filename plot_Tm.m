@@ -27,7 +27,7 @@ xMax = 0;
 xMin = inf;
 yMax = 0;
 yMin = inf;
-colorList = jet(numFiles);
+colorList = cool(numFiles);
 
 set(gcf,'color','w');
 for i = 1:numFiles
