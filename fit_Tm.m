@@ -16,8 +16,18 @@
 %                   - {'Exp1', 'Exp2', 'StrExp'}
 %       MarkerSize  marker size in scatter plot, 20 by default
 %                   - Name-value pair arguments
+%       DataColor   data color
+%       FitColor    fit color
 %       TimeUnit    X axis unit, use microsecond (us) by default 
 %                   - {'ns', 'us', 'ms', 's'}
+%       StartingPoint
+%       LowerBound
+%       UpperBound
+%       PrintFitCurve   true or flase
+%       LegendColumns   number of columns
+%       LegendPosition  'best'
+%       yoffset     offset of each trace. 0 by default.
+%       ModFreqRange  range of the modulation frequency
 %
 %   Output:
 %       FitResult   table containing fitting results.
@@ -37,7 +47,7 @@ par.addOptional('FitFunc', 'Exp2', checkFitFunc);
 par.addParameter('FitModulation', false, @islogical);
 par.addParameter('TwoOmega', false, @islogical);
 
-par.addParameter('MarkerSize', 20, @isnumeric);
+par.addParameter('MarkerSize', 10, @isnumeric);
 par.addParameter('DataColor', nan, @(x) ischar(x)|isstring(x));
 par.addParameter('FitColor', nan, @(x) ischar(x)|isstring(x));
 
@@ -52,6 +62,7 @@ par.addParameter('PrintFitCurve', false, @islogical);
 par.addParameter('LegendColumns', nan, @isnumeric);
 par.addParameter('LegendPosition', 'best', @ischar);
 par.addParameter('yoffset', 0, @isnumeric);
+par.addParameter('ModFreqRange',nan,@(x) isnumeric(x) && length(x)==2);
 
 par.KeepUnmatched = true;
 
@@ -99,7 +110,7 @@ xMax = 0;
 xMin = inf;
 yMax = 0;
 yMin = inf;
-colorList = jet(numFiles);
+colorList = cool(numFiles);
 
 % Initialize FitResult table
 switch fitfunc
@@ -133,8 +144,8 @@ switch fitfunc
     case "Exp2"
         if ~args.FitModulation
             FitResult = table('VariableNames', ...
-                {'Temperature', 'T_long', 'T_long Percentage', ...
-                'T_short', 'T_short Percentage', 'R-Squared'}, ...
+                {'Temperature', 'T_long', 'T_long Weight', ...
+                'T_short', 'T_short Weight', 'R-Squared'}, ...
                 'Size', [numFiles, 6], ...
                 'VariableTypes',repelem({'double'},6));
             FitResult.Properties.VariableUnits = {
@@ -142,8 +153,8 @@ switch fitfunc
         else
             if ~args.TwoOmega
                 FitResult = table('VariableNames', ...
-                    {'Temperature', 'T_long', 'T_long Percentage', ...
-                        'T_short', 'T_short Percentage', 'C_mod', ...
+                    {'Temperature', 'T_long', 'T_long Weight', ...
+                        'T_short', 'T_short Weight', 'C_mod', ...
                         'Modulation Frequency', 'R-Squared'}, ...
                     'Size', [numFiles, 8], ...
                     'VariableTypes',repelem({'double'},8));
@@ -151,8 +162,8 @@ switch fitfunc
                     'K', timeUnit, '', timeUnit, '', '', 'MHz', ''};
             else
                 FitResult = table('VariableNames', ...
-                    {'Temperature', 'T_long', 'T_long Percentage', ...
-                        'T_short', 'T_short Percentage', 'C_mod1', ...
+                    {'Temperature', 'T_long', 'T_long Weight', ...
+                        'T_short', 'T_short Weight', 'C_mod1', ...
                         'C_mod2','Modulation Frequency', 'R-Squared'}, ...
                     'Size', [numFiles, 9], ...
                     'VariableTypes',repelem({'double'},9));
@@ -220,6 +231,13 @@ for i = 1:numFiles
         [~, loc] = max(yFFT);
         modFreq = freqAxis(loc); % Depends on time unit
         omega = modFreq*2*pi;
+        if ~isnan(args.ModFreqRange)
+            omegaMin = args.ModFreqRange(1)*pi*timeScaleFactor/1e3;
+            omegaMax = args.ModFreqRange(2)*pi*timeScaleFactor/1e3;
+        else
+            omegaMin = omega/10;
+            omegaMax = omega*10;
+        end
     end
 
     switch fitfunc
@@ -233,25 +251,27 @@ for i = 1:numFiles
             else
                 if ~args.TwoOmega
                     func = @(c1, c2, k, c3, omega, phi, x) ...
-                        (c1 + c2*exp(-x/k)).*(1 + c3*sin(omega*x+phi));
-                    bounds = [c(1)/2,c(2)/100,0.5/k,1e-3,omega/10,-inf;
-                              c(1)*2,c(2)*100,2/k,100,omega*10,inf];
+                        c1 + c2*exp(-x/k).*(1 + c3*sin(omega*x+phi));
+                    bounds = [c(1)/2,c(2)/100,0.5/k,1e-3,omegaMin,-inf;
+                              c(1)*2,c(2)*100,2/k,100,omegaMax,inf];
                     startPoint = [c(1), c(2), 1/k, 1, omega, 0];
                     [curve, gof] = do_fit(x, y, func, startPoint, bounds);
                     FitResult.C_mod(i) = curve.c3;
                 else
                     func = @(c1, c2, k, c3, c4, omega, phi_1, phi_2, x) ...
-                        (c1 + c2*exp(-x/k)).*(1 + c3*sin(omega*x+phi_1) + ...
+                        c1 + c2*exp(-x/k).*(1 + c3*sin(omega*x+phi_1) + ...
                         c4*sin(2*omega*x+phi_2));
                     bounds = [c(1)/2,c(2)/100, 0.1/k,1e-3,1e-3, ...
-                                                    omega/10,-inf,-inf;
+                                                    omegaMin,-inf,-inf;
                               c(1)*2,c(2)*100, 10/k,100,100, ...
-                                                    omega*10,inf,inf];
+                                                    omegaMax,inf,inf];
                     startPoint = [c(1), c(2), 1/k, 1, 1, omega, 0, 0];
                     [curve, gof] = do_fit(x, y, func, startPoint, bounds);
                     FitResult.C_mod1(i) = curve.c3;
                     FitResult.C_mod2(i) = curve.c4;
                 end
+                % the x here is 2tau. So omega*2 is the real frequency
+                % so modFreq(real) = omega*2 /(2*pi)
                 FitResult.('Modulation Frequency')(i) = ...
                     (curve.omega/pi)*1e3/timeScaleFactor; % MHz
             end
@@ -259,35 +279,35 @@ for i = 1:numFiles
 
         case "Exp2"
             if ~args.FitModulation
-                func = @(c1, c2, c3, k1, k2, x) ...
-                        c1 + c2*exp(-x/k1) + c3*exp(-x/k2);
-                bounds = [c(1)/2,c(2)/100,c(2)/100,1/k,0.0001/k;...
-                          c(1)*2,c(2)*100,c(2)*100,1000/k,1/k];
-                startPoint = [c(1), c(2), c(2), 1/k, 1/k];
+                func = @(c1, c2, c3, k1, r, x) ...
+                        c1 + c2*exp(-x/k1) + c3*exp(-x/(k1*r));
+                bounds = [c(1)/2,c(2)/100,c(2)/100,0.001/k,1;...
+                          c(1)*2,c(2)*100,c(2)*100,1000/k,100];
+                startPoint = [c(1), c(2), c(2), 1/k, 1];
                 [curve, gof] = do_fit(x, y, func, startPoint, bounds);
             else
                 if ~args.TwoOmega
-                    func = @(c1, c2, c3, k1, k2, c4, omega, phi, x) ...
-                            (c1 + c2*exp(-x/k1) + c3*exp(-x/k2)).*( ...
+                    func = @(c1, c2, c3, k1, r, c4, omega, phi, x) ...
+                            c1 + (c2*exp(-x/k1) + c3*exp(-x/(k1*r))).*( ...
                             1 + c4*sin(omega*x+phi));
-                    bounds = [c(1)/2,c(2)/100,c(2)/100,1/k,0.0001/k, ...
-                                                1e-3,omega/10,-inf;
-                              c(1)*2,c(2)*100,c(2)*100,1000/k,1/k, ...
-                                                100,omega*10,inf];
-                    startPoint = [c(1), c(2), c(2), 1/k, 1/k, 1, omega, 0];
+                    bounds = [c(1)/2,c(2)/100,c(2)/100,0.001/k,1, ...
+                                                1e-3,omegaMin,-inf;
+                              c(1)*2,c(2)*100,c(2)*100,1000/k,100, ...
+                                                100,omegaMax,inf];
+                    startPoint = [c(1), c(2), c(2), 1/k, 1, 1, omega, 0];
                     [curve, gof] = do_fit(x, y, func, startPoint, bounds);
                     FitResult.C_mod(i) = curve.c4;
                 else
-                    func = @(c1, c2, c3, k1, k2, c4, c5, omega, phi_1, ...
+                    func = @(c1, c2, c3, k1, r, c4, c5, omega, phi_1, ...
                             phi_2, x) ...
-                            (c1 + c2*exp(-x/k1) + c3*exp(-x/k2)).*(1 + ...
+                            c1 + (c2*exp(-x/k1) + c3*exp(-x/(k1*r))).*(1 + ...
                             c4*sin(omega*x+phi_1) + ...
                             c5*sin(2*omega*x+phi_2));
-                    bounds = [c(1)/2,c(2)/100,c(2)/100,1/k,0.0001/k, ...
-                                            1e-3,1e-3,omega/10,-inf,-inf;
-                              c(1)*2,c(2)*100,c(2)*100,1000/k,1/k, ...
-                                            100,100, omega*10,inf,inf];
-                    startPoint = [c(1), c(2), c(2), 1/k, 1/k, 1, 1, ...
+                    bounds = [c(1)/2,c(2)/100,c(2)/100,0.001/k,1, ...
+                                            1e-3,1e-3,omegaMin,-inf,-inf;
+                              c(1)*2,c(2)*100,c(2)*100,1000/k,100, ...
+                                            100,100, omegaMax,inf,inf];
+                    startPoint = [c(1), c(2), c(2), 1/k, 1, 1, 1, ...
                                             omega, 0, 0];
                     [curve, gof] = do_fit(x, y, func, startPoint, bounds);
                     FitResult.C_mod1(i) = curve.c4;
@@ -297,36 +317,36 @@ for i = 1:numFiles
                     (curve.omega/pi)*1e3/timeScaleFactor; % MHz
             end
             [T_long, T_longPerc, T_short, T_shortPerc] = ...
-                get_Tlong_and_Tshort([curve.k1, curve.k2], ...
+                get_Tlong_and_Tshort([curve.k1, curve.r*curve.k1], ...
                 [curve.c1, curve.c2, curve.c3]);
             FitResult{i,2:5} = [T_long, T_longPerc, T_short, T_shortPerc];
         case "StrExp"
             if ~args.FitModulation
                 func = @(c1, c2, beta, k, x) ...
                         c1 + c2*exp(-(x/k).^beta);
-                bounds = [c(1)/2,c(2)/100,0.5,0.01/k;...
-                          c(1)*2,c(2)*100,1.5,100/k];
+                bounds = [c(1)/2,c(2)/100,0.5,0.1/k;...
+                          c(1)*2,c(2)*100,1.5,10/k];
                 startPoint = [c(1),c(2),1,1/k];
                 [curve, gof] = do_fit(x, y, func, startPoint, bounds);
             else
                 if ~args.TwoOmega
                     func = @(c1, c2, beta, k, c3, omega, phi, x) ...
-                            (c1 + c2*exp(-(x/k).^beta)).*(1 + ...
+                            c1 + (c2*exp(-(x/k).^beta)).*(1 + ...
                             c3*sin(omega*x+phi));
-                    bounds = [c(1)/2,c(2)/100,0.5,0.01/k,1e-3,omega/10,-inf;
-                              c(1)*2,c(2)*100,1.5,100/k,100,omega*10,inf];
+                    bounds = [c(1)/2,c(2)/100,0.5,0.1/k,1e-3,omegaMin,-inf;
+                              c(1)*2,c(2)*100,1.5,10/k,100,omegaMax,inf];
                     startPoint = [c(1),c(2),1,1/k,1,omega,0];
                     [curve, gof] = do_fit(x, y, func, startPoint, bounds);
                     FitResult.C_mod(i) = curve.c3;
                 else
                     func = @(c1, c2, beta, k, c3, c4, omega, ...
                             phi_1, phi_2, x) ...
-                            (c1 + c2*exp(-(x/k).^beta)).*(1 + ...
+                            c1 + (c2*exp(-(x/k).^beta)).*(1 + ...
                             c3*sin(omega*x+phi_1) + c4*sin(2*omega*x+phi_2));
-                    bounds = [c(1)/2,c(2)/100,0.5,0.01/k,1e-3,1e-3, ...
-                                                    omega/10,-inf,-inf;
-                              c(1)*2,c(2)*100,1.5,100/k,100,100, ...
-                                                    omega*10,inf,inf];
+                    bounds = [c(1)/2,c(2)/100,0.5,0.1/k,1e-3,1e-3, ...
+                                                    omegaMin,-inf,-inf;
+                              c(1)*2,c(2)*100,1.5,10/k,100,100, ...
+                                                    omegaMax,inf,inf];
                     startPoint = [c(1),c(2),1,1/k, 1, 1, omega, 0, 0];
                     [curve, gof] = do_fit(x, y, func, startPoint, bounds);
                     FitResult.C_mod1(i) = curve.c3;
