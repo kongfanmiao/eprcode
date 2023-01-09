@@ -29,7 +29,7 @@ xMax = 0;
 xMin = inf;
 yMax = 0;
 yMin = inf;
-colorList = jet(numFiles);
+colorList = cool(numFiles);
 
 for i = 1:numFiles
     f = Files{i};
