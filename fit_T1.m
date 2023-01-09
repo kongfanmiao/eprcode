@@ -18,6 +18,11 @@
 %                   - Name-value pair arguments
 %       TimeUnit    X axis unit, use microsecond (us) by default 
 %                   - {'ns', 'us', 'ms', 's'}
+%       LegendColumns
+%                   number of columns of legends
+%       LegendPosition
+%                   position of legend, eg. best, bestoutside
+%       Color       Use color map (default) or set color
 %
 %   Output:
 %       FitResult   table containing fitting results.
@@ -40,7 +45,7 @@ par.addParameter("MarkerSize", 20, @isnumeric);
 checkTimeUnit = @(x) any(validatestring(x, {'ns', 'us', 'ms', 's'}));
 par.addParameter("TimeUnit", 'ns', checkTimeUnit);
 par.addParameter('LegendColumns', nan, @isnumeric);
-par.addParameter('LegendPosition', 'bestoutside', @ischar);
+par.addParameter('LegendPosition', 'southeast', @ischar);
 par.addParameter('Color', nan, @ischar);
 
 par.KeepUnmatched = true;
@@ -89,7 +94,7 @@ xMax = 0;
 xMin = inf;
 yMax = 0;
 yMin = inf;
-colorList = jet(numFiles);
+colorList = cool(numFiles);
 
 % Initialize FitResult table
 switch fitfunc
@@ -99,7 +104,7 @@ switch fitfunc
         FitResult.Properties.VariableUnits = {'K', timeUnit};
     case "Exp2"
         FitResult = table('VariableNames',{'Temperature', ...
-            'T_long', 'T_long Percentage', 'T_short', 'T_short Percentage'}, ...
+            'T_long', 'T_long Weight', 'T_short', 'T_short Weight'}, ...
             'Size', [numFiles, 5], 'VariableTypes',repelem({'double'},5));
         FitResult.Properties.VariableUnits = {'K', timeUnit, '', ...
             timeUnit, ''};
@@ -127,7 +132,7 @@ for i = 1:numFiles
     [k,c,yfit] = exponfit(x,y,1);
     switch fitfunc
         case "Exp1"
-            func = "c1 + c2*exp(-x/k)";
+            func = @(c1, c2, k, x) c1 + c2*exp(-x/k);
             fo = fitoptions(func,"StartPoint",[c 1/k]);
             ft = fittype(func,"options",fo);
             [curve, gof] = fit(x,y,ft);
@@ -135,18 +140,18 @@ for i = 1:numFiles
             FitResult.("R-Squared")(i) = gof.rsquare;
             yfit = curve(x);
         case "Exp2"
-            func = @(c1, c2, c3, k1, k2, x) ...
-                c1 + c2*exp(-x/k1) + c3*exp(-x/k2);
-            bounds = [c(1)/2 c(2)/100 c(2)/100 1/k 0.001/k;...
-                      c(1)*2 c(2)*100 c(2)*100 1000/k 1/k];
+            func = @(c1, c2, c3, k1, r, x) ...
+                c1 + c2*exp(-x/k1) + c3*exp(-x/(k1*r));
+            bounds = [c(1)/2 c(2)/100 c(2)/100 0.001/k 1;...
+                      c(1)*2 c(2)*100 c(2)*100 1000/k 100];
             fo = fitoptions(func, ...
-                "StartPoint",[c(1) c(2) c(2) 1/k 1/k], ...
+                "StartPoint",[c(1) c(2) c(2) 1/k 1], ...
                 "Lower",min(bounds,[],1), ...
                 "Upper",max(bounds,[],1));
             ft = fittype(func,"options",fo);
             [curve, gof] = fit(x,y,ft);
             [T_long, T_longPerc, T_short, T_shortPerc] = ...
-                get_Tlong_and_Tshort([curve.k1, curve.k2], ...
+                get_Tlong_and_Tshort([curve.k1, curve.k1*curve.r], ...
                 [curve.c1, curve.c2, curve.c3]);
             FitResult{i,2:end-1} = [T_long, T_longPerc, T_short, T_shortPerc];
             FitResult.("R-Squared")(i) = gof.rsquare; 
@@ -169,7 +174,7 @@ for i = 1:numFiles
     yM = max(y);
     y = y/yM;
     yfit = yfit/yM;
-    if ~args.Color
+    if isnan(args.Color)
         c = colorList(i,:);
     else
         c = args.Color;
@@ -193,8 +198,10 @@ if isnan(args.LegendColumns)
 else
     numCol = args.LegendColumns;
 end
+axP = get(gca,'Position');  
 legend(labels, "Location", args.LegendPosition, "Interpreter","none", ...
-    'NumColumns', numCol);
+    'NumColumns', numCol, 'FontSize',6);
+set(gca, 'Position', axP);
 ylabel(ylabelStr);
 xlabel(xlabelStr);
 xlim([xMin xMax]);
