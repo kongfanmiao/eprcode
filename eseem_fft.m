@@ -1,4 +1,4 @@
-function eseem_fft(path, keywords, zeroPadding)
+function eseem_fft(path, keywords, zeroPadding, hamming)
 
 % Do Fourier transform for the Tm decay, based on path and keywords
 %
@@ -10,6 +10,7 @@ arguments
     path
     keywords
     zeroPadding logical = false
+    hamming logical = true
 end
 
 [x,y] = load_file(path, keywords);
@@ -28,7 +29,7 @@ curve = fit(x,y,ft);
 yfit = curve(x);
 y = y-yfit;
 
-eseem_fft_raw(x,y, zeroPadding);
+eseem_fft_raw(x,y, zeroPadding, hamming);
 
 % Create the figure title based on keywords
 titleStr = ['Fourier Transform of Tm Decay: ', join(keywords, ' ')];
