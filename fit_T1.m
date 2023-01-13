@@ -22,7 +22,11 @@
 %                   number of columns of legends
 %       LegendPosition
 %                   position of legend, eg. best, bestoutside
-%       Color       Use color map (default) or set color
+%       Color       use color map (default) or set color
+%       Exclude     exclude certain temperatures
+%       SeperatePlot
+%                   plot each temperature in seperate panels
+%       PlotTwoExp  plot the two processes in bi-exponential model
 %
 %   Output:
 %       FitResult   table containing fitting results.
@@ -40,19 +44,30 @@ par = inputParser;
 checkFitFunc = @(x) any(validatestring(x, {'Exp1', 'Exp2', 'StrExp'}));
 par.addOptional('FitFunc', 'Exp2', checkFitFunc);
 
-par.addParameter("MarkerSize", 20, @isnumeric);
+par.addParameter("MarkerSize", 10, @isnumeric);
 
 checkTimeUnit = @(x) any(validatestring(x, {'ns', 'us', 'ms', 's'}));
 par.addParameter("TimeUnit", 'ns', checkTimeUnit);
 par.addParameter('LegendColumns', nan, @isnumeric);
 par.addParameter('LegendPosition', 'southeast', @ischar);
 par.addParameter('Color', nan, @ischar);
+par.addParameter('Exclude', nan, @isnumeric);
+par.addParameter('SeperatePlot', false, @islogical);
+par.addParameter('PlotTwoExp', false, @islogical);
 
 par.KeepUnmatched = true;
 
 parse(par, varargin{:});
 args = par.Results;
 fitfunc = args.FitFunc;
+
+if args.PlotTwoExp
+    % verify 1) SeperatePlot is true, 2) FitFunc is Exp2
+    assert(args.SeperatePlot, ['SepeartePlot must be true in order to ' ...
+        'plot two processes seperately in bi-exponential model']);
+    assert(strcmp(fitfunc,'Exp2'), ['You must use bi-exponential model if ' ...
+        'PlotTwoExp is true']);
+end
 
 fitfuncFullName = containers.Map( ...
     ["Exp1", "Exp2", "StrExp"], ...
@@ -64,6 +79,12 @@ keywords = string(keywords);
 keywords(end+1) = "T1PF";
 keywords = unique(keywords);
 filesTable = sort_temperature(path, keywords);
+if ~isnan(args.Exclude)
+    for i = 1:numel(args.Exclude)
+        t = args.Exclude(i);
+        filesTable(filesTable.Temperature==t,:) = [];
+    end
+end
 Temperature = filesTable.Temperature;
 Files = filesTable.Files;
 numFiles = length(Files);
@@ -127,6 +148,8 @@ for i = 1:numFiles
     x = change_x_axis(x, fullfile(path,f));
     % Change x axis unit
     x = x/timeScaleFactor;
+    % Rescale y to be in the same scale as x
+    y = y*max(x)/max(y);
     % first use exponfit to get an estimate
     % "c1 + c2*exp(-k*x)"
     [k,c,yfit] = exponfit(x,y,1);
@@ -179,37 +202,80 @@ for i = 1:numFiles
     else
         c = args.Color;
     end
-    scatter(x,y,args.MarkerSize, "MarkerEdgeColor",c);
-    labels{2*i-1} = strcat(num2str(Temperature(i))," K data");
-    hold on
-    plot(x,yfit, "Color", c);
-    labels{2*i} = strcat(num2str(Temperature(i))," K Fit");
-    hold on
+    if ~args.SeperatePlot
+        scatter(x,y,args.MarkerSize, "MarkerEdgeColor",c);
+        labels{2*i-1} = strcat(num2str(Temperature(i))," K data");
+        hold on
+        plot(x,yfit, "Color", c);
+        labels{2*i} = strcat(num2str(Temperature(i))," K Fit");
+        hold on
+    else
+        figure();
+        scatter(x,y, 30, "MarkerEdgeColor",'b');
+        hold on
+        plot(x,yfit, "Color", 'k', 'LineWidth',1);
+        hold off
+        box on
+%         set(gca,'xscale','log');
+        ylabel(ylabelStr);
+        xlabel(xlabelStr);
+        legend(strcat(num2str(Temperature(i))," K data"), ...
+            strcat(num2str(Temperature(i))," K Fit"), ...
+            'Location', 'best');
+        title(sprintf('%s K', num2str(Temperature(i))));
+        xlim([-0.01*max(x),1.01*max(x)]);
+        yticks([]);
+        if args.PlotTwoExp
+            if T_long == curve.k1
+                coef_long = curve.c2;
+                coef_short = curve.c3;
+            else
+                coef_long = curve.c3;
+                coef_short = curve.c2;
+            end
+            onlyslow = curve.c1 + coef_long*exp(-x/T_long);
+            onlyfast = curve.c1 + coef_short*exp(-x/T_short);
+            hold on
+            plot(x, onlyslow/yM, 'Color', 'red', 'LineWidth',1);
+            plot(x, onlyfast/yM, 'Color', 'green', 'LineWidth',1);
+            legend(strcat(num2str(Temperature(i))," K data"), ...
+                strcat(num2str(Temperature(i))," K Fit"), ... 
+                sprintf(['only slow process (coef: %0.2e, T_{slow}: ' ...
+                '%.2f %s)'], coef_long, T_long, timeUnit), ...
+                sprintf(['only fast process (coef: %0.2e, T_{fast}: ' ...
+                '%.2f %s)'], coef_short, T_short, timeUnit), ...
+                'location','best');
+        end
+    end
     xMin = min(xMin, min(x));
     xMax = max(xMax, max(x));
     yMin = min(yMin, min(real(y)));
     yMax = max(yMax, max(real(y)));
 end
-set(gca,'xscale','log');
-title(strcat(titleStr, sprintf("\n(%s)",fitfuncFullName(fitfunc))), ...
-    "Interpreter","none");
+
 if isnan(args.LegendColumns)
     numCol = ceil(numel(labels)/16);
 else
     numCol = args.LegendColumns;
 end
-axP = get(gca,'Position');  
-legend(labels, "Location", args.LegendPosition, "Interpreter","none", ...
-    'NumColumns', numCol, 'FontSize',6);
-set(gca, 'Position', axP);
-ylabel(ylabelStr);
-xlabel(xlabelStr);
-xlim([xMin xMax]);
-ylim([yMin yMax]);
-yticks([]);
-hold off
+
+if ~args.SeperatePlot
+    set(gca,'xscale','log');
+    title(strcat(titleStr, sprintf("\n(%s)",fitfuncFullName(fitfunc))), ...
+        "Interpreter","none");
+    legend(labels, "Location", args.LegendPosition, "Interpreter","none", ...
+        'NumColumns', numCol, 'FontSize',6);
+    yticks([]);
+    xlim([xMin xMax]);
+    ylim([yMin yMax]);
+    ylabel(ylabelStr);
+    xlabel(xlabelStr);
+    hold off
+    box on
+end
 set(gcf,'color','w');
-box on
+% axP = get(gca,'Position');  
+% set(gca, 'Position', axP);
 
 % fig = gcf;
 % if fig.WindowStyle ~= "docked"
