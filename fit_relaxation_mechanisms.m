@@ -175,7 +175,7 @@ A_dirMin = A_dir/SearchRange; A_dirMax = A_dir*SearchRange;
 A_ram = A_dir;
 A_ramMin = A_dir/SearchRange; A_ramMax = A_dir*SearchRange;
 theta_D = 100; % K
-theta_DMin = 10; theta_DMax = 1e4;
+theta_DMin = 10; theta_DMax = 1e3;
 % Local process
 A_loc = A_dir;
 A_locMin = A_dir/SearchRange; A_locMax = A_dir*SearchRange;
