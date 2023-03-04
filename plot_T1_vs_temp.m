@@ -6,7 +6,8 @@
 %
 %   Input:
 %       FitResult       table of fitting result
-%       inverseT1       plot the inverse of T1 values
+%       XScale          x axis scale, linear by default
+%       YScale          y axis scale, linear by default
 %       Color           color, 'blue' by default
 %       Marker          marker, 'o' by default
 %       MarkerSize      marker size, 100 by default
@@ -16,7 +17,8 @@ function plot_T1_vs_temp(FitResult,varargin)
 
 par = inputParser;
 par.addParameter('Inverse', false, @islogical);
-par.addParameter('LogScale', false, @islogical);
+par.addParameter('XScale', 'linear', @(x)isstring(x)|ischar(x));
+par.addParameter('YScale', 'linear', @(x)isstring(x)|ischar(x));
 par.addParameter('Color', 'b', @(x)isstring(x)|ischar(x));
 par.addParameter('Marker', 'o', @(x)any(validatestring(x, ...
     {'o','+','*','.','x','-','|','s','d','^','v','>','<','p','h'})));
@@ -63,8 +65,7 @@ title(ttl)
 set(gcf,'color','w');
 box on
 
-if args.LogScale
-    set(gca, 'XScale', 'log', 'YScale', 'log');
+set(gca, 'XScale', args.XScale, 'YScale', args.YScale);
 
 % fig = gcf;
 % if fig.WindowStyle ~= "docked"
