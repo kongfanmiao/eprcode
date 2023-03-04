@@ -14,6 +14,7 @@ writetable(data, spcFilePath, 'WriteVariableNames',false, 'WriteMode','append');
 
 sysFileName = [char(dataInfo) '_SimulatedSystem'];
 sysFilePath = fullfile(path, [sysFileName '.xml']);
+
 if numel(fitSys) == 1
     writestruct(fitSys, sysFilePath);
 else
