@@ -17,7 +17,7 @@ if hamming
 end
 % zero padding
 if zeroPadding
-    N = 2^nextpow2(N);
+    N = 2^nextpow2(N*2);
 end
 yFFT = abs(fft(y,N))/N;
 freqAxis = (0:N/2-1)/(N*(x(2)-x(1)));
