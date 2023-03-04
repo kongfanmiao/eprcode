@@ -21,6 +21,7 @@ ylabel(sprintf('%s (%s)', names{2}, units{2}));
 titleStr = fileName(1:end-4);
 title(titleStr, 'Interpreter','none');
 legend(names{2:end});
+yticks([]);
 set(gca, 'LineWidth', 1.5);
 set(gcf,'color','w');
 box on
