@@ -4,8 +4,8 @@ function result = load_csv(path, keywords)
 
 file = find_files(path,keywords,'FileType','csv', 'FullPath', true);
 if numel(file)>1
-    error('More than one file is found:')
     disp(file);
+    error('More than one file is found:')
 end
 % read from the third row
 file = file{:};
