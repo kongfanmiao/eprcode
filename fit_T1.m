@@ -27,6 +27,8 @@
 %       SeperatePlot
 %                   plot each temperature in seperate panels
 %       PlotTwoExp  plot the two processes in bi-exponential model
+%       rcRange     range of rc in bi-exp fitting
+%       rkRange     range of rk in bi-exp fitting
 %
 %   Output:
 %       FitResult   table containing fitting results.
@@ -54,12 +56,19 @@ par.addParameter('Color', nan, @ischar);
 par.addParameter('Exclude', nan, @isnumeric);
 par.addParameter('SeperatePlot', false, @islogical);
 par.addParameter('PlotTwoExp', false, @islogical);
+par.addParameter('rcRange', [0.01 100]);
+% par.addParameter('rkRange', [0.01 100]);
 
 par.KeepUnmatched = true;
 
 parse(par, varargin{:});
 args = par.Results;
 fitfunc = args.FitFunc;
+
+rc0 = args.rcRange(1);
+rc1 = args.rcRange(2);
+% rk0 = args.rkRange(1);
+% rk1 = args.rkRange(2);
 
 if args.PlotTwoExp
     % verify 1) SeperatePlot is true, 2) FitFunc is Exp2
@@ -120,20 +129,20 @@ colorList = cool(numFiles);
 % Initialize FitResult table
 switch fitfunc
     case "Exp1"
-        FitResult = table('VariableNames',{'Temperature', 'T1'}, ...
-            'Size', [numFiles, 2], 'VariableTypes',repelem({'double'},2));
-        FitResult.Properties.VariableUnits = {'K', timeUnit};
+        FitResult = table('VariableNames',{'Temperature', 'T1', 'T1ConfInt_lower', 'T1ConfInt_upper'}, ...
+            'Size', [numFiles, 4], 'VariableTypes',repelem({'double'},4));
+        FitResult.Properties.VariableUnits = {'K', timeUnit,'',''};
     case "Exp2"
         FitResult = table('VariableNames',{'Temperature', ...
-            'T_long', 'T_long Weight', 'T_short', 'T_short Weight'}, ...
-            'Size', [numFiles, 5], 'VariableTypes',repelem({'double'},5));
-        FitResult.Properties.VariableUnits = {'K', timeUnit, '', ...
-            timeUnit, ''};
+            'T_long', 'T_long Weight', 'TlongConfInt_lower', 'TlongConfInt_upper', 'T_short', 'T_short Weight', 'TshortConfInt_lower', 'TshortConfInt_upper'}, ...
+            'Size', [numFiles, 9], 'VariableTypes',repelem({'double'},9));
+        FitResult.Properties.VariableUnits = {'K', timeUnit, '','','', ...
+            timeUnit, '','',''};
     case "StrExp"
         FitResult = table('VariableNames',{'Temperature', ...
-            'T1', 'Stretch Factor'}, ...
-            'Size', [numFiles, 3], 'VariableTypes',repelem({'double'},3));
-        FitResult.Properties.VariableUnits = {'K', timeUnit, ''};
+            'T1', 'Stretch Factor', 'T1ConfInt_lower', 'T1ConfInt_upper'}, ...
+            'Size', [numFiles, 5], 'VariableTypes',repelem({'double'}, 5));
+        FitResult.Properties.VariableUnits = {'K', timeUnit, '','',''};
 end
 
 FitResult.Temperature = Temperature;
@@ -160,36 +169,60 @@ for i = 1:numFiles
             ft = fittype(func,"options",fo);
             [curve, gof] = fit(x,y,ft);
             FitResult.T1(i) = curve.k;
+            ci = confint(curve);
+            FitResult.T1ConfInt_lower(i) = ci(1,3);
+            FitResult.T1ConfInt_upper(i) = ci(2,3);
             FitResult.("R-Squared")(i) = gof.rsquare;
             yfit = curve(x);
         case "Exp2"
-            func = @(c1, c2, c3, k1, r, x) ...
-                c1 + c2*exp(-x/k1) + c3*exp(-x/(k1*r));
-            bounds = [c(1)/2 c(2)/100 c(2)/100 0.001/k 1;...
-                      c(1)*2 c(2)*100 c(2)*100 1000/k 100];
+            func = @(c1, c2, rc, k1, k2, x) ...
+                c1 + c2*exp(-x/k1) + c2*rc*exp(-x/(k2));
+            % limiting slow process having larger weight
+            bounds = [c(1)/2 c(2)/100 rc0 0.001/k 0.001/k;...
+                      c(1)*2 c(2)*100 rc1 1000/k 1000/k];
             fo = fitoptions(func, ...
-                "StartPoint",[c(1) c(2) c(2) 1/k 1], ...
+                "StartPoint",[c(1) c(2) 1 1/k 1.1/k], ...
                 "Lower",min(bounds,[],1), ...
                 "Upper",max(bounds,[],1));
             ft = fittype(func,"options",fo);
             [curve, gof] = fit(x,y,ft);
-            [T_long, T_longPerc, T_short, T_shortPerc] = ...
-                get_Tlong_and_Tshort([curve.k1, curve.k1*curve.r], ...
-                [curve.c1, curve.c2, curve.c3]);
-            FitResult{i,2:end-1} = [T_long, T_longPerc, T_short, T_shortPerc];
-            FitResult.("R-Squared")(i) = gof.rsquare; 
+            if curve.k1 > curve.k2 % k1 is T long (Tl)
+                TlPerc = abs(curve.c2)./(abs(curve.c2)+abs(curve.c2*curve.rc));
+                TsPerc = abs(curve.c2*curve.rc)./(abs(curve.c2)+abs(curve.c2*curve.rc));
+                ci = confint(curve);
+                TlConfInt_lower = ci(1,4);
+                TlConfInt_upper = ci(2,4);
+                TsConfInt_lower = ci(1,5);
+                TsConfInt_upper = ci(2,5);
+                FitResult{i,2:9} = [curve.k1, TlPerc, TlConfInt_lower, TlConfInt_upper, ...
+                    curve.k2, TsPerc, TsConfInt_lower, TsConfInt_upper];
+            else % k2 is T long (Tl)
+                TsPerc = abs(curve.c2)./(abs(curve.c2)+abs(curve.c2*curve.rc));
+                TlPerc = abs(curve.c2*curve.rc)./(abs(curve.c2)+abs(curve.c2*curve.rc));
+                ci = confint(curve);
+                TsConfInt_lower = ci(1,4);
+                TsConfInt_upper = ci(2,4);
+                TlConfInt_lower = ci(1,5);
+                TlConfInt_upper = ci(2,5);
+                FitResult{i,2:9} = [curve.k2, TlPerc, TlConfInt_lower, TlConfInt_upper, ...
+                    curve.k1, TsPerc, TsConfInt_lower, TsConfInt_upper];
+            end
+            FitResult.("R-Squared")(i) = gof.rsquare;
             yfit = curve(x);
         case "StrExp"
             func = "c1 + c2*exp(-(x/k)^c3)";
             bounds = [c/100 0.2 k/100;...
-                      c*100 2.0 k*100];
+                      c*100 2.0 k*100]
             fo = fitoptions(func, ...
                 "StartPoint",[c 1 1/k], ...
                 "Lower",min(bounds,[],1), ...
                 "Upper",max(bounds,[],1));
             ft = fittype(func,"options",fo);
             [curve, gof] = fit(x,y,ft);
-            FitResult{i,2:end-1} = [curve.k, curve.c3];
+            FitResult{i,2:3} = [curve.k, curve.c3];
+            ci = confint(curve);
+            FitResult.T1ConfInt_lower(i) = ci(1,4);
+            FitResult.T1ConfInt_upper(i) = ci(2,4);
             FitResult.("R-Squared")(i) = gof.rsquare; 
             yfit = curve(x);
     end
@@ -228,9 +261,9 @@ for i = 1:numFiles
         if args.PlotTwoExp
             if T_long == curve.k1
                 coef_long = curve.c2;
-                coef_short = curve.c3;
+                coef_short = curve.c2*curve.rc;
             else
-                coef_long = curve.c3;
+                coef_long = curve.c2*curve.rc;
                 coef_short = curve.c2;
             end
             onlyslow = curve.c1 + coef_long*exp(-x/T_long);
