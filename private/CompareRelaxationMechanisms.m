@@ -34,7 +34,7 @@ plot(t, raman(20, 200, t), '-g', 'LineWidth', 2);
 plot(t, local(1, 100, t), '--b', 'LineWidth',2)
 plot(t, orbach(1e-6, 300, t), '--m', LineWidth=2)
 plot(t, orbach1(0.12, 300, t), '-m')
-plot(t, thermal(10,0.4,100,1, t), 'cyan', LineWidth=2)
+plot(t, thermal(10,0.1,200,1, t), 'cyan', LineWidth=2)
 plot(t, cosech(3,100, t), 'color','#800000', LineWidth=2)
 plot(t, cross(10,10,t), 'color', 'r')
 % plot(t, 7e-5*t.^2, 'k') % approximate Raman
@@ -45,6 +45,7 @@ legend('Direct', 'Raman', 'Local', 'Orbach', ...
     Location='best')
 
 hold off
+set(gcf, 'color', 'w')
 % set(gca, 'XScale', 'log', 'YScale', 'log')
 %%
 figure(2);
