@@ -12,8 +12,9 @@ B = data{:,1};
 spc = data{:,2};
 fitSpc = data{:,3};
 
-plot(B, spc, '-k',  ...
-     B, fitSpc, '--b', 'LineWidth', 1);
+plot(B, spc, '-k',  'LineWidth', 1);
+hold on
+plot(B, fitSpc, '--b', 'LineWidth', 2);
 xlim([min(B) max(B)]);
 ylim([min(spc) max(max(spc), max(fitSpc))*1.1]);
 xlabel(sprintf('%s (%s)', names{1}, units{1}));
